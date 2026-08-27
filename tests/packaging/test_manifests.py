@@ -59,6 +59,9 @@ def test_config_page_has_customizable_shortcut():
     assert "shortcut " in qml
     assert "onKeySequenceModified" in qml
     assert "Méta" in qml
+    assert "GPU allow list" in qml
+    assert "gpu.graphics_allow" in qml
+    assert "gpu.denylist" in qml
     assert "invent.token" not in qml
     assert "enable-linger" not in qml
 

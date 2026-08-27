@@ -584,6 +584,30 @@ def main() -> None:
     shortcut.setAccessibleName("Open window shortcut")
     form.addRow("Open window", shortcut)
     cfl.addLayout(form)
+    cfl.addWidget(_heading("GPU"))
+    gpu_help = QLabel(
+        "The agent pauses while another CUDA app uses the GPU. Names below are "
+        "process fragments that may share the GPU (one per line)."
+    )
+    gpu_help.setWordWrap(True)
+    _muted(gpu_help)
+    cfl.addWidget(gpu_help)
+    allow = QPlainTextEdit()
+    allow.setPlaceholderText("kwin\nfirefox\ndiscord")
+    allow.setAccessibleName("GPU allow list")
+    allow.setFixedHeight(120)
+    deny = QPlainTextEdit()
+    deny.setPlaceholderText("comfy\nblender\nsteam")
+    deny.setAccessibleName("GPU denylist")
+    deny.setFixedHeight(90)
+    cfl.addWidget(QLabel("Don't pause for"))
+    cfl.addWidget(allow)
+    deny_help = QLabel("Regexes matched against process command lines (one per line).")
+    deny_help.setWordWrap(True)
+    _muted(deny_help)
+    cfl.addWidget(QLabel("Always pause for"))
+    cfl.addWidget(deny_help)
+    cfl.addWidget(deny)
     cfg_row = QHBoxLayout()
     save = QPushButton("Save")
     save.setAccessibleName("Save config")
@@ -603,6 +627,9 @@ def main() -> None:
         force.setChecked(bool(c["daemon"]["force_run_during_pause"]))
         idle.setValue(int(c["daemon"].get("idle_unload_s") or 15))
         shortcut.setKeySequence(QKeySequence(str((c.get("plasma") or {}).get("global_shortcut") or "")))
+        gpu = c.get("gpu") or {}
+        allow.setPlainText("\n".join(str(x) for x in (gpu.get("graphics_allow") or []) if str(x).strip()))
+        deny.setPlainText("\n".join(str(x) for x in (gpu.get("denylist") or []) if str(x).strip()))
 
     def save_cfg() -> None:
         if force.isChecked():
@@ -616,6 +643,8 @@ def main() -> None:
                     "daemon.force_run_during_pause": force.isChecked(),
                     "daemon.idle_unload_s": idle.value(),
                     "plasma.global_shortcut": shortcut.keySequence().toString(QKeySequence.PortableText),
+                    "gpu.graphics_allow": allow.toPlainText(),
+                    "gpu.denylist": deny.toPlainText(),
                 }
             },
         )

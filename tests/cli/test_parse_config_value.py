@@ -9,3 +9,4 @@ def test_parse_config_value_json_and_raw_shortcut():
     assert parse_config_value('"Meta+Ctrl+K"') == "Meta+Ctrl+K"
     assert parse_config_value("Meta+Ctrl+K") == "Meta+Ctrl+K"
     assert parse_config_value("") == ""
+    assert parse_config_value('["kwin","firefox"]') == ["kwin", "firefox"]

@@ -19,6 +19,9 @@ def test_graphics_allow_list_present(xdg):
     allow = [a.lower() for a in cfg.get("gpu.graphics_allow")]
     for name in ("firefox", "kwin", "plasmashell", "chrome", "openlogi"):
         assert name in allow
+    from kde_ai.config import gpu_allow_names
+
+    assert "kwin" in gpu_allow_names(cfg)
     deny = cfg.get("gpu.denylist")
     assert any("comfy" in d for d in deny)
     assert any("steam" in d for d in deny)

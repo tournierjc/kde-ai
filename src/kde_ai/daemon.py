@@ -272,6 +272,10 @@ class Daemon:
             return overlay_live_shortcut(self.cfg.redacted())
         if method == "config.set":
             keys = apply_patch(self.cfg, params.get("patch") or {})
+            if any(k.startswith("gpu.") or k == "daemon.force_run_during_pause" for k in keys):
+                self.watchdog._clear_since = 0.0
+                self.watchdog.poll()
+                self.broadcast_status()
             self.broadcast("config.changed", {"patch_keys": keys})
             return {"ok": True}
         if method == "skills.list":

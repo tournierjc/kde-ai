@@ -73,4 +73,8 @@ def test_config_whitelist(xdg):
     rpc.call("config.set", {"patch": {"daemon.log_level": "debug"}})
     cfg = rpc.call("config.get")
     assert cfg["daemon"]["log_level"] == "debug"
+    rpc.call("config.set", {"patch": {"gpu.graphics_allow": "kwin,firefox,openlogi"}})
+    cfg = rpc.call("config.get")
+    assert "firefox" in cfg["gpu"]["graphics_allow"]
+    assert "openlogi" in cfg["gpu"]["graphics_allow"]
     rpc.close()

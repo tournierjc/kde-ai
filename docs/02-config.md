@@ -85,7 +85,9 @@ enabled = ["kde-desktop", "cachyos", "bugs"]
 
 ## `config.set` whitelist
 
-`daemon.enabled`, `daemon.idle_unload_s`, `daemon.log_level`, `daemon.force_run_during_pause`, `llm.gguf`, `llm.temperature`, `llm.top_p`, `gpu.denylist`, `rag.enabled`, `rag.reindex_on_boot`, `cli.default_session`, `cli.krunner_session`, `plasma.prefix`, `plasma.global_shortcut`, `plasma.default_page`, `skills.enabled`, `network.offline`, `privilege.frontend_default`.
+`daemon.enabled`, `daemon.idle_unload_s`, `daemon.log_level`, `daemon.force_run_during_pause`, `llm.gguf`, `llm.temperature`, `llm.top_p`, `gpu.denylist`, `gpu.graphics_allow`, `rag.enabled`, `rag.reindex_on_boot`, `cli.default_session`, `cli.krunner_session`, `plasma.prefix`, `plasma.global_shortcut`, `plasma.default_page`, `skills.enabled`, `network.offline`, `privilege.frontend_default`.
+
+`gpu.graphics_allow` is process-name fragments for CUDA apps that should **not** pause the agent (Firefox, Discord, `openlogi`, …). Edit them on the Config page (one name per line) or `kde-ai config set gpu.graphics_allow kwin,firefox,openlogi`. `kwin`, `plasmashell`, and `Xorg` stay allowed even if you omit them. `gpu.denylist` is regexes that **always** pause when those processes use the GPU.
 
 `plasma.global_shortcut` is empty by default. The Config page applies it as soon as you capture a chord (`kde-ai shortcut Meta+Ctrl+K` / `kde-ai shortcut clear`). `config set` also accepts a bare token (not only JSON) so the plasmoid shell does not strip the quotes off a shortcut string.
 

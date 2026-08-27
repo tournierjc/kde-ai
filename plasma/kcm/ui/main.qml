@@ -38,6 +38,12 @@ KCM.SimpleKCM {
             value: 15
             Accessible.name: "Idle unload seconds"
         }
+        QQC2.Label {
+            Kirigami.FormData.label: "GPU apps"
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            text: "Don't-pause and always-pause process lists are in the plasmoid Config page, or: kde-ai config set gpu.graphics_allow kwin,firefox"
+        }
         QQC2.Button { text: "Apply"; Accessible.name: "Apply config"; icon.name: "document-save" }
     }
 }

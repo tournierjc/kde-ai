@@ -5,6 +5,7 @@ import re
 import time
 from pathlib import Path
 
+from kde_ai.config import gpu_allow_names
 from kde_ai.logutil import log
 
 try:
@@ -68,7 +69,12 @@ class GpuWatchdog:
         return found
 
     def _denylist_hit(self) -> tuple[bool, int | None, str]:
-        patterns = [re.compile(p, re.I) for p in (self.cfg.get("gpu.denylist") or [])]
+        compiled = []
+        for raw in self.cfg.get("gpu.denylist") or []:
+            try:
+                compiled.append(re.compile(str(raw), re.I))
+            except re.error:
+                continue
         proc = Path("/proc")
         if not proc.is_dir():
             return False, None, ""
@@ -84,7 +90,7 @@ class GpuWatchdog:
             except Exception:
                 continue
             blob = cmd + " " + comm
-            for pat in patterns:
+            for pat in compiled:
                 if pat.search(blob) and self._pid_uses_gpu(pid):
                     return True, pid, comm or cmd[:80]
         return False, None, ""
@@ -92,7 +98,7 @@ class GpuWatchdog:
     def _compute_hit(self) -> tuple[bool, int | None, str]:
         if not self._nvml_ok:
             return False, None, ""
-        allow = [a.lower() for a in (self.cfg.get("gpu.graphics_allow") or [])]
+        allow = gpu_allow_names(self.cfg)
         try:
             count = pynvml.nvmlDeviceGetCount()
             for i in range(count):
@@ -106,12 +112,22 @@ class GpuWatchdog:
                     if pid in self.self_pids:
                         continue
                     name = ""
+                    cmd = ""
                     try:
                         name = Path(f"/proc/{pid}/comm").read_text().strip()
                     except Exception:
                         pass
-                    low = name.lower()
-                    if any(a in low for a in allow):
+                    try:
+                        cmd = (
+                            Path(f"/proc/{pid}/cmdline")
+                            .read_bytes()
+                            .replace(b"\x00", b" ")
+                            .decode(errors="ignore")
+                        )
+                    except Exception:
+                        pass
+                    blob = f"{name} {cmd}".lower()
+                    if any(token in blob for token in allow):
                         continue
                     return True, pid, name or str(pid)
         except Exception:

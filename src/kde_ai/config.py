@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import copy
+import json
 import logging
+import re
 import tomllib
 from typing import Any
 
@@ -121,6 +123,7 @@ CONFIG_SET_WHITELIST = {
     "llm.temperature",
     "llm.top_p",
     "gpu.denylist",
+    "gpu.graphics_allow",
     "rag.enabled",
     "rag.reindex_on_boot",
     "cli.default_session",
@@ -132,6 +135,43 @@ CONFIG_SET_WHITELIST = {
     "network.offline",
     "privilege.frontend_default",
 }
+
+_LIST_KEYS = {"gpu.graphics_allow", "gpu.denylist", "skills.enabled"}
+GPU_ALLOW_CORE = ("kwin", "plasmashell", "xorg")
+
+
+def as_str_list(value: Any) -> list[str]:
+    """Normalize JSON arrays, comma/newline lists, or Python lists to names."""
+    if value is None or value is False:
+        return []
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        if text.startswith("["):
+            try:
+                parsed = json.loads(text)
+            except json.JSONDecodeError:
+                parsed = None
+            if parsed is not None:
+                return as_str_list(parsed)
+        return [part.strip() for part in re.split(r"[\s,;]+", text) if part.strip()]
+    if isinstance(value, (list, tuple)):
+        return [str(item).strip() for item in value if str(item).strip()]
+    raise ValueError("expected a list of names")
+
+
+def gpu_allow_names(cfg: Config | None = None, names: list[str] | None = None) -> list[str]:
+    extra = names if names is not None else as_str_list((cfg.get("gpu.graphics_allow") if cfg else None) or [])
+    extra = [name.lower() for name in extra]
+    out: list[str] = []
+    seen: set[str] = set()
+    for name in (*GPU_ALLOW_CORE, *extra):
+        if len(name) < 2 or name in seen:
+            continue
+        seen.add(name)
+        out.append(name)
+    return out
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
@@ -236,6 +276,21 @@ def apply_patch(cfg: Config, patch: dict) -> list[str]:
             from kde_ai.errors import VALIDATION, RpcError
 
             raise RpcError(VALIDATION, f"config key not allowed: {key}")
+        if key in _LIST_KEYS:
+            from kde_ai.errors import VALIDATION, RpcError
+
+            try:
+                value = as_str_list(value)
+            except ValueError as exc:
+                raise RpcError(VALIDATION, str(exc)) from exc
+        if key == "gpu.denylist":
+            from kde_ai.errors import VALIDATION, RpcError
+
+            for pat in value:
+                try:
+                    re.compile(pat)
+                except re.error as exc:
+                    raise RpcError(VALIDATION, f"invalid gpu.denylist pattern {pat!r}: {exc}") from exc
         cfg.set_path(key, value)
         changed.append(key)
     cfg.save()
