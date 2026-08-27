@@ -1,0 +1,17 @@
+{
+  "n": 500,
+  "valid_tool_json": 1.0,
+  "tool_name_at1": 1.0,
+  "irrelevance": 1.0,
+  "propose_solved_discipline": 1.0,
+  "invented_bugzilla": 0.0,
+  "rag_hallucination": 0.0,
+  "gates": {
+    "valid_tool_json": 0.9,
+    "tool_name_at1": 0.7,
+    "irrelevance": 0.8,
+    "propose_solved_discipline": 0.95,
+    "invented_bugzilla": 0.02,
+    "rag_hallucination": 0.1
+  }
+}

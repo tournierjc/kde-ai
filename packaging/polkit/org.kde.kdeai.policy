@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>kde-ai</vendor>
+  <action id="org.kde.kdeai.unused">
+    <description>Placeholder. Prefer pkexec of /usr/bin/id, journalctl, dmesg, systemctl, pacman.</description>
+    <message>kde-ai does not ship a passwordless admin helper.</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+  </action>
+</policyconfig>

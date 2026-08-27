@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ruff + pytest
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package
+        run: pip install -e ".[dev]"
+
+      - name: Ruff
+        run: ruff check src tests data/generators data/validators training scripts
+
+      - name: Validate gold seed
+        env:
+          PYTHONPATH: src:.
+        run: python -m data.validators.validate_jsonl --gold data/gold
+
+      - name: Pytest
+        env:
+          PYTHONPATH: src:.
+        run: pytest -q
+
+      - name: Full corpus + holdout gate
+        env:
+          PYTHONPATH: src:.
+        run: |
+          if [[ -f data/out/train.jsonl ]]; then
+            python -m data.validators.validate_jsonl --full data/out
+            python scripts/eval_holdout.py --eval data/out/eval.jsonl --metrics /tmp/holdout_metrics.json
+          else
+            echo "data/out/train.jsonl missing; skip full-corpus gate"
+            exit 1
+          fi

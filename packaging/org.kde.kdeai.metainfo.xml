@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.kde.kdeai</id>
+  <name>KDE AI</name>
+  <summary>Local KDE and CachyOS assistant</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-2.0-or-later</project_license>
+  <description>
+    <p>Chat with a local agent that can inspect your Plasma/CachyOS system, search bugs, and manage session memory. Privileged actions always prompt via sudo or polkit.</p>
+  </description>
+  <launchable type="desktop-id">org.kde.kdeai.desktop</launchable>
+</component>

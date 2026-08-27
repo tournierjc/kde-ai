@@ -1,0 +1,37 @@
+.TH KDE-AI 1 "2026" "kde-ai 0.1.0" "User Commands"
+.SH NAME
+kde-ai \- local KDE/CachyOS AI agent CLI
+.SH SYNOPSIS
+.B kde-ai
+[\fB\-\-json\fR]
+.RI [ command ]
+.SH DESCRIPTION
+Talks to the per-user
+.B kde-ai-agent
+daemon over
+.I $XDG_RUNTIME_DIR/kde-ai/kde-ai.sock .
+Privileged tools prompt with sudo on a TTY. Passwords never enter RPC.
+.SH COMMANDS
+.TP
+(none)
+Interactive REPL.
+.TP
+.B chat [--fix] [-s ID] message
+Send a chat turn. \fB--fix\fR enters issue mode.
+.TP
+.B sessions list|new|rename|delete|archive|use
+Session CRUD.
+.TP
+.B memory clear|summarize|pins|pin|unpin|solved|forget|stats|export
+Per-session memory.
+.TP
+.B confirm yes|no [--note]
+Solve-loop confirmation.
+.TP
+.B cancel-attempt
+Undo the open attempt.
+.TP
+.B status / doctor [--reindex] / tools / skills / config / bug-report
+Daemon diagnostics and configuration.
+.SH SEE ALSO
+kde-ai-agent(1)

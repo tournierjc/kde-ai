@@ -1,0 +1,8 @@
+[Unit]
+Description=KDE AI JSON-RPC socket
+[Socket]
+ListenStream=%t/kde-ai/kde-ai.sock
+SocketMode=0600
+DirectoryMode=0700
+[Install]
+WantedBy=sockets.target

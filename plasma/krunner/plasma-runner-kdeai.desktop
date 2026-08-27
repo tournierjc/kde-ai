@@ -1,0 +1,16 @@
+[Desktop Entry]
+Name=KDE AI
+Comment=Ask the local KDE/CachyOS agent
+Type=Service
+Icon=help-hint
+X-KDE-PluginInfo-Name=kdeai
+X-KDE-PluginInfo-Version=0.1
+X-KDE-PluginInfo-License=GPL
+X-KDE-PluginInfo-EnabledByDefault=true
+X-Plasma-API=DBus
+X-Plasma-DBusRunner-Service=org.kde.kdeai
+X-Plasma-DBusRunner-Path=/runner
+X-Plasma-Runner-Min-Letter-Count=3
+X-Plasma-Runner-Match-Regex=^(ai |kdeai )
+X-Plasma-Runner-Syntaxes=ai :q:,kdeai :q:
+X-Plasma-Runner-Syntax-Descriptions=Ask kde-ai,Ask kde-ai

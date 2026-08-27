@@ -1,0 +1,19 @@
+app-id: org.kde.kdeai
+runtime: org.kde.Platform
+runtime-version: "6.7"
+sdk: org.kde.Sdk
+command: kde-ai-ui
+finish-args:
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --filesystem=xdg-run/kde-ai:ro
+  - --talk-name=org.kde.kdeai
+modules:
+  - name: kde-ai
+    buildsystem: simple
+    build-commands:
+      - pip3 install --prefix=/app .
+    sources:
+      - type: dir
+        path: ../..

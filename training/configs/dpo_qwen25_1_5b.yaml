@@ -1,0 +1,6 @@
+model_name: Qwen/Qwen2.5-1.5B-Instruct
+train_file: data/out/dpo.jsonl
+output_dir: checkpoints/dpo-1.5b
+beta: 0.1
+learning_rate: 5.0e-7
+num_train_epochs: 1

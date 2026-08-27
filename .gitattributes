@@ -1,0 +1,2 @@
+# JSONL corpora are ordinary git objects in this repo (under GitHub's 100 MiB limit).
+# Switch to Git LFS later if the files grow: git lfs track 'data/out/*.jsonl'

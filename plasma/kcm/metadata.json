@@ -1,0 +1,11 @@
+{
+  "KPlugin": {
+    "Description": "Configure the local KDE AI agent",
+    "Icon": "help-hint",
+    "Name": "KDE AI",
+    "ServiceTypes": ["KCModule"]
+  },
+  "X-KDE-ParentApp": "kcontrol",
+  "X-KDE-System-Settings-Parent-Category": "system-administration",
+  "X-KDE-Weight": 80
+}

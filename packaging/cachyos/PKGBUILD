@@ -1,0 +1,29 @@
+pkgname=kde-ai
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Local KDE/CachyOS AI agent"
+arch=('any')
+url="https://github.com/kde-ai/kde-ai"
+license=('GPL2')
+depends=('python' 'python-httpx' 'python-yaml' 'python-prompt_toolkit')
+optdepends=('llama-cpp: llama-server GGUF inference' 'tesseract: screenshot OCR' 'pyside6: kde-ai-ui')
+makedepends=('python-build' 'python-installer' 'python-wheel' 'python-setuptools')
+source=()
+package() {
+  cd "$startdir/../.."
+  python -m build --wheel --outdir "$srcdir"
+  python -m installer --destdir="$pkgdir" "$srcdir"/*.whl
+  install -Dm644 packaging/systemd/kde-ai-agent.service "$pkgdir/usr/lib/systemd/user/kde-ai-agent.service"
+  install -Dm644 packaging/systemd/kde-ai-reindex.timer "$pkgdir/usr/lib/systemd/user/kde-ai-reindex.timer"
+  install -Dm644 packaging/systemd/kde-ai-reindex.service "$pkgdir/usr/lib/systemd/user/kde-ai-reindex.service"
+  install -Dm644 packaging/systemd/kde-ai.socket "$pkgdir/usr/lib/systemd/user/kde-ai.socket"
+  install -Dm644 plasma/krunner/plasma-runner-kdeai.desktop "$pkgdir/usr/share/krunner/dbusplugins/plasma-runner-kdeai.desktop"
+  install -d "$pkgdir/usr/share/plasma/plasmoids/org.kde.kdeai"
+  cp -a plasma/plasmoid/. "$pkgdir/usr/share/plasma/plasmoids/org.kde.kdeai/"
+  install -d "$pkgdir/usr/share/kde-ai/skills"
+  cp -a skills/. "$pkgdir/usr/share/kde-ai/skills/"
+  install -Dm644 packaging/man/kde-ai.1 "$pkgdir/usr/share/man/man1/kde-ai.1"
+  install -Dm644 packaging/org.kde.kdeai.metainfo.xml "$pkgdir/usr/share/metainfo/org.kde.kdeai.metainfo.xml"
+  install -Dm644 packaging/org.kde.kdeai.desktop "$pkgdir/usr/share/applications/org.kde.kdeai.desktop"
+  install -Dm644 packaging/polkit/org.kde.kdeai.policy "$pkgdir/usr/share/polkit-1/actions/org.kde.kdeai.policy"
+}

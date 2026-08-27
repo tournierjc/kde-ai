@@ -1,0 +1,10 @@
+{
+  "display": {"kcm": "kcm_kscreen", "command": "systemsettings kcm_kscreen", "doc": "https://userbase.kde.org/System_Settings/Display"},
+  "audio": {"kcm": "kcm_pulseaudio", "command": "systemsettings kcm_pulseaudio", "doc": "https://userbase.kde.org/PulseAudio"},
+  "network": {"kcm": "kcm_networkmanagement", "command": "systemsettings kcm_networkmanagement", "doc": "https://userbase.kde.org/Plasma/Network"},
+  "shortcuts": {"kcm": "kcm_keys", "command": "systemsettings kcm_keys", "doc": "https://userbase.kde.org/System_Settings/Shortcuts"},
+  "compositor": {"kcm": "kcm_kwincompositing", "command": "systemsettings kcm_kwincompositing", "doc": "https://userbase.kde.org/KWin"},
+  "theme": {"kcm": "kcm_lookandfeel", "command": "systemsettings kcm_lookandfeel", "doc": "https://userbase.kde.org/Plasma/LookAndFeel"},
+  "panel": {"kcm": "kcm_plasmasearch", "command": "systemsettings", "doc": "https://userbase.kde.org/Plasma/Panels"},
+  "notifications": {"kcm": "kcm_notifications", "command": "systemsettings kcm_notifications", "doc": "https://userbase.kde.org/Plasma/Notifications"}
+}

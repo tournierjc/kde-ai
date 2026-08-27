@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=KDE AI
+Exec=kde-ai
+Icon=help-hint
+Type=Application
+Categories=Utility;System;
+Terminal=true

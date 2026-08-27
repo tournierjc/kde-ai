@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kde-ai"
+version = "0.1.0"
+description = "Local KDE/CachyOS AI agent daemon and CLI"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "GPL-2.0-or-later" }
+authors = [{ name = "kde-ai" }]
+dependencies = [
+  "httpx>=0.27",
+  "prompt_toolkit>=3.0",
+  "pyyaml>=6.0",
+  "nvidia-ml-py>=12.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+gpu = ["nvidia-ml-py>=12.0"]
+train = ["torch", "transformers", "peft", "trl", "datasets"]
+ui = ["PySide6>=6.6"]
+
+[project.scripts]
+kde-ai = "kde_ai.cli:main"
+kde-ai-agent = "kde_ai.daemon:main"
+kde-ai-ui = "kde_ai.ui:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+kde_ai = ["prompts/*.txt", "data/*.json", "shipped_skills/*/SKILL.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+ignore = ["E501"]

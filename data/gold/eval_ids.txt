@@ -1,0 +1,16 @@
+gold-rag-ls
+gold-rag-pacman
+gold-rag-journalctl
+gold-rag-systemctl
+gold-rag-kwin_wayland
+gold-rag-man
+gold-rag-uname
+gold-rag-dmesg
+gold-refuse-0
+gold-refuse-1
+gold-refuse-2
+gold-refuse-3
+gold-refuse-4
+gold-refuse-5
+gold-refuse-6
+gold-refuse-7

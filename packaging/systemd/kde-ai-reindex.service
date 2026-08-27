@@ -1,0 +1,7 @@
+[Unit]
+Description=kde-ai FTS reindex
+After=kde-ai-agent.service
+
+[Service]
+Type=oneshot
+ExecStart=kde-ai doctor --reindex
