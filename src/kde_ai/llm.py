@@ -11,8 +11,35 @@ import httpx
 
 from kde_ai.errors import LLM_ERROR, RpcError
 from kde_ai.logutil import log
-from kde_ai.paths import cache_dir
+from kde_ai.paths import cache_dir, data_dir
 from kde_ai.tools.registry import SCHEMAS
+
+_LLAMA_SERVER_NAMES = ("llama-server", "llama.cpp-server")
+
+
+def find_llama_server(configured: str | None = None) -> str | None:
+    """Resolve llama-server: config path, PATH, then well-known install locations."""
+    candidates: list[str] = []
+    if configured:
+        candidates.append(os.path.expanduser(str(configured)))
+    candidates.extend(_LLAMA_SERVER_NAMES)
+    for raw in candidates:
+        path = Path(raw)
+        if path.is_file() and os.access(path, os.X_OK):
+            return str(path)
+        found = shutil.which(raw)
+        if found:
+            return found
+    extras = [
+        Path("/usr/bin/llama-server"),
+        Path("/usr/local/bin/llama-server"),
+        Path.home() / ".local/bin/llama-server",
+        data_dir() / "bin" / "llama-server",
+    ]
+    for path in extras:
+        if path.is_file() and os.access(path, os.X_OK):
+            return str(path)
+    return None
 
 
 def _free_port() -> int:
@@ -58,9 +85,12 @@ class LlamaRuntime:
                 LLM_ERROR,
                 f"GGUF missing at {gguf}; run scripts/fetch-gguf.sh",
             )
-        binary = shutil.which(self.cfg.get("llm.llama_server") or "llama-server")
+        binary = find_llama_server(self.cfg.get("llm.llama_server") or "llama-server")
         if not binary:
-            raise RpcError(LLM_ERROR, "llama-server not on PATH")
+            raise RpcError(
+                LLM_ERROR,
+                "llama-server not found; install llama-cpp (sudo pacman -S llama-cpp)",
+            )
         self.port = _free_port()
         cache_dir().mkdir(parents=True, exist_ok=True)
         cmd = [

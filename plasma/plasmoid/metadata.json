@@ -1,15 +1,21 @@
 {
-  "KPlugin": {
-    "Authors": [{ "Name": "kde-ai", "Email": "kde-ai@local" }],
-    "Category": "Utilities",
-    "Description": "Local KDE/CachyOS AI agent",
-    "EnabledByDefault": true,
-    "Icon": "help-hint",
-    "Id": "org.kde.kdeai",
-    "License": "GPL-2.0+",
-    "Name": "KDE AI",
-    "Version": "0.1.0",
-    "Website": "https://invent.kde.org"
-  },
-  "X-Plasma-API-Minimum-Version": "6.0"
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [{ "Name": "kde-ai", "Email": "kde-ai@local" }],
+        "Category": "Utilities",
+        "Description": "Local KDE/CachyOS AI agent",
+        "EnabledByDefault": true,
+        "Icon": "help-hint",
+        "Id": "org.kde.kdeai",
+        "License": "GPL-2.0+",
+        "Name": "KDE AI",
+        "Version": "0.1.0",
+        "Website": "https://invent.kde.org"
+    },
+    "X-Plasma-API": "declarativeappletscript",
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-MainScript": "ui/main.qml",
+    "X-Plasma-StandAloneApp": true,
+    "X-Plasma-NotificationArea": true,
+    "X-Plasma-NotificationAreaCategory": "SystemServices"
 }

@@ -1,7 +1,10 @@
 [Desktop Entry]
 Name=KDE AI
-Exec=kde-ai
+Comment=Local KDE/CachyOS AI agent
+Exec=kde-ai-toggle
 Icon=help-hint
 Type=Application
 Categories=Utility;System;
-Terminal=true
+Terminal=false
+StartupNotify=false
+X-KDE-Shortcuts=Meta+Shift+A

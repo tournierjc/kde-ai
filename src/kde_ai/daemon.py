@@ -13,7 +13,7 @@ from kde_ai import __version__
 from kde_ai.agent import Agent
 from kde_ai.config import Config, apply_patch
 from kde_ai.errors import OVERFLOW, PROTOCOL, VALIDATION, RpcError
-from kde_ai.llm import LlamaRuntime
+from kde_ai.llm import LlamaRuntime, find_llama_server
 from kde_ai.logutil import log, redact_text, setup_logging
 from kde_ai.paths import ensure_dirs, pid_path, socket_path
 from kde_ai.protocol import decode_line, error, notify, result
@@ -132,7 +132,8 @@ class Daemon:
             "linger": linger,
             "gguf": Path(os.path.expanduser(str(self.cfg.get("llm.gguf")))).exists(),
             "gguf_path": os.path.expanduser(str(self.cfg.get("llm.gguf"))),
-            "llama_server": bool(shutil.which(self.cfg.get("llm.llama_server"))),
+            "llama_server": bool(find_llama_server(self.cfg.get("llm.llama_server"))),
+            "llama_server_path": find_llama_server(self.cfg.get("llm.llama_server")),
             "nvml": self.watchdog._nvml_ok,
             "paused": self.watchdog.paused,
             "display": bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")),

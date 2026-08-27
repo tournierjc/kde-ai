@@ -12,6 +12,8 @@ PlasmoidItem {
     property bool paused: statusText === "paused"
     property bool awaiting: statusText === "awaiting_confirm"
     preferredRepresentation: compactRepresentation
+    toolTipMainText: "KDE AI"
+    toolTipSubText: "Open with Meta+Shift+A"
 
     Component.onCompleted: root.page = "chat"
 

@@ -5,8 +5,8 @@ pkgdesc="Local KDE/CachyOS AI agent"
 arch=('any')
 url="https://github.com/kde-ai/kde-ai"
 license=('GPL2')
-depends=('python' 'python-httpx' 'python-yaml' 'python-prompt_toolkit')
-optdepends=('llama-cpp: llama-server GGUF inference' 'tesseract: screenshot OCR' 'pyside6: kde-ai-ui')
+depends=('python' 'python-httpx' 'python-yaml' 'python-prompt_toolkit' 'llama-cpp')
+optdepends=('tesseract: screenshot OCR' 'pyside6: kde-ai-ui')
 makedepends=('python-build' 'python-installer' 'python-wheel' 'python-setuptools')
 source=()
 package() {

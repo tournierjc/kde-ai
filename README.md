@@ -12,7 +12,8 @@ Weights live in VRAM only while answering. Privileged tools prompt on a TTY (`su
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
-kde-ai-agent &          # or: systemctl --user enable --now kde-ai-agent.service
+sudo pacman -S llama-cpp          # provides llama-server
+./scripts/install.sh              # plasmoid, Meta+Shift+A, user daemon
 kde-ai doctor
 kde-ai chat "What Plasma version am I on?"
 # optional GUI: pip install -e ".[ui]" && kde-ai-ui

@@ -27,6 +27,7 @@ ui = ["PySide6>=6.6"]
 kde-ai = "kde_ai.cli:main"
 kde-ai-agent = "kde_ai.daemon:main"
 kde-ai-ui = "kde_ai.ui:main"
+kde-ai-toggle = "kde_ai.toggle:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
