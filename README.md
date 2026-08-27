@@ -13,7 +13,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 sudo pacman -S llama-cpp          # provides llama-server
-./scripts/install.sh              # plasmoid, Meta+Shift+A, user daemon
+./scripts/install.sh              # plasmoid, user daemon (window shortcut unset)
 kde-ai doctor
 kde-ai chat "What Plasma version am I on?"
 # optional GUI: pip install -e ".[ui]" && kde-ai-ui

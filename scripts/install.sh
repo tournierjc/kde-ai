@@ -58,16 +58,9 @@ systemctl --user enable --now kde-ai-agent.service 2>/dev/null || true
 if command -v kbuildsycoca6 >/dev/null 2>&1; then
   kbuildsycoca6 >/dev/null 2>&1 || true
 fi
-if command -v kwriteconfig6 >/dev/null 2>&1; then
-  kwriteconfig6 --file kglobalshortcutsrc --group org.kde.kdeai.desktop --key _k_friendly_name "KDE AI"
-  kwriteconfig6 --file kglobalshortcutsrc --group org.kde.kdeai.desktop --key _launch "Meta+Shift+A,none,KDE AI"
-fi
-if command -v qdbus6 >/dev/null 2>&1; then
-  qdbus6 org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel.reconfigure >/dev/null 2>&1 || true
-fi
 bash "$ROOT/scripts/setup-plasma-shortcut.sh" || true
 
-echo "Shortcut: Meta+Shift+A opens KDE AI (kde-ai-toggle / plasmawindowed)."
+echo "Window shortcut is unset by default. Assign one in the Config page or System Settings → Shortcuts → KDE AI."
 if [[ -t 0 ]]; then
   printf "Enable lingering so SSH can reach the user daemon? [y/N] "
   read -r ans

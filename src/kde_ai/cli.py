@@ -12,6 +12,21 @@ from kde_ai.errors import RpcError
 JSON_MODE = False
 
 
+def parse_config_value(raw: str):
+    """Decode a `config set` value. JSON if possible; otherwise the raw token.
+
+    The plasmoid executable engine runs via a shell, which strips the quotes
+    JSON.stringify() adds around a shortcut string like Meta+Ctrl+K.
+    """
+    text = (raw or "").strip()
+    if not text:
+        return ""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return text
+
+
 def out(obj) -> None:
     if JSON_MODE:
         print(json.dumps(obj, ensure_ascii=False))
@@ -103,6 +118,34 @@ def _wait_stream(rpc: RpcClient) -> None:
         time.sleep(0.05)
 
 
+def collect_stream(notifications: list[dict]) -> dict:
+    parts: list[str] = []
+    done: dict = {}
+    for note in notifications:
+        method = note.get("method")
+        params = note.get("params") or {}
+        if method == "stream.token":
+            parts.append(params.get("text") or "")
+        elif method == "stream.done":
+            done = params
+    return {
+        "text": "".join(parts),
+        "reason": done.get("reason"),
+        "error": done.get("error"),
+    }
+
+
+def _last_assistant_text(rpc: RpcClient, sid: str) -> str:
+    try:
+        transcript = rpc.call("session.transcript", {"session_id": sid, "limit": 40, "offset": 0})
+    except RpcError:
+        return ""
+    for msg in reversed(transcript.get("messages") or []):
+        if msg.get("role") == "assistant" and (msg.get("content") or "").strip():
+            return str(msg.get("content") or "")
+    return ""
+
+
 def cmd_chat(rpc: RpcClient, args) -> int:
     sid = _sid(rpc, args)
     msg = " ".join(args.message or [])
@@ -113,8 +156,11 @@ def cmd_chat(rpc: RpcClient, args) -> int:
         return 2
     res = rpc.call("chat.send", {"session_id": sid, "message": msg, "issue_hint": bool(args.fix)})
     _wait_stream(rpc)
+    stream = collect_stream(rpc.notifications)
+    if not stream.get("text"):
+        stream["text"] = _last_assistant_text(rpc, sid)
     if JSON_MODE:
-        out(res)
+        out({**res, **stream})
     return 0
 
 
@@ -167,7 +213,7 @@ def main(argv: list[str] | None = None) -> None:
     pchat.add_argument("-s", "--session")
     pchat.add_argument("message", nargs="*")
     ps = sub.add_parser("sessions")
-    ps.add_argument("action", choices=["list", "new", "rename", "delete", "archive", "use"])
+    ps.add_argument("action", choices=["list", "new", "rename", "delete", "archive", "use", "transcript"])
     ps.add_argument("rest", nargs="*")
     pm = sub.add_parser("memory")
     pm.add_argument(
@@ -191,6 +237,8 @@ def main(argv: list[str] | None = None) -> None:
     pcfg = sub.add_parser("config")
     pcfg.add_argument("action", choices=["get", "set"])
     pcfg.add_argument("rest", nargs="*")
+    psh = sub.add_parser("shortcut")
+    psh.add_argument("rest", nargs="*")
     pbug = sub.add_parser("bug-report")
     pbug.add_argument("-s", "--session")
     args = parser.parse_args(argv)
@@ -242,14 +290,17 @@ def main(argv: list[str] | None = None) -> None:
             if act == "list":
                 out(rpc.call("session.list", {}))
             elif act == "new":
-                title = args.rest[0] if args.rest else None
+                title = " ".join(args.rest).strip() or None
                 out(rpc.call("session.create", {"title": title}))
             elif act == "rename":
-                rpc.call("session.rename", {"session_id": args.rest[0], "title": args.rest[1]})
+                rpc.call("session.rename", {"session_id": args.rest[0], "title": " ".join(args.rest[1:])})
                 out({"ok": True})
             elif act == "delete":
                 rpc.call("session.delete", {"session_id": args.rest[0]})
                 out({"ok": True})
+            elif act == "transcript":
+                sid = args.rest[0] if args.rest else _sid(rpc, args)
+                out(rpc.call("session.transcript", {"session_id": sid, "limit": 100, "offset": 0}))
             elif act == "archive":
                 rpc.call("session.archive", {"session_id": args.rest[0], "archived": True})
                 out({"ok": True})
@@ -308,9 +359,26 @@ def main(argv: list[str] | None = None) -> None:
             if args.action == "get":
                 out(rpc.call("config.get"))
             else:
-                key, value = args.rest[0], json.loads(args.rest[1])
+                if not args.rest:
+                    print("config set KEY VALUE", file=sys.stderr)
+                    raise SystemExit(2)
+                key = args.rest[0]
+                value = parse_config_value(" ".join(args.rest[1:]))
                 rpc.call("config.set", {"patch": {key: value}})
                 out({"ok": True})
+            return
+        if args.cmd == "shortcut":
+            raw = " ".join(args.rest).strip()
+            if raw.lower() in ("get", "show", ""):
+                cfg = rpc.call("config.get")
+                out({"shortcut": (cfg.get("plasma") or {}).get("global_shortcut") or ""})
+                return
+            if raw.lower() in ("clear", "none", "off"):
+                raw = ""
+            elif raw.lower().startswith("set "):
+                raw = raw[4:].strip()
+            rpc.call("config.set", {"patch": {"plasma.global_shortcut": raw}})
+            out({"ok": True, "shortcut": raw})
             return
     except RpcError as exc:
         if JSON_MODE:

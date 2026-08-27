@@ -12,4 +12,5 @@ tools:
 enabled_default: true
 ---
 When the user has a Plasma or KWin issue, prefer kde_settings_hint and search_docs.
+For monitor count, brand, model, GPU, Plasma version, Qt, or session (Wayland/X11), call system_info and quote those fields.
 Do not invent System Settings module names. Use propose_solved only in issue mode.

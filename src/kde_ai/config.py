@@ -78,6 +78,7 @@ DEFAULTS: dict[str, Any] = {
             "chrome",
             "chromium",
             "discord",
+            "openlogi",
         ],
     },
     "rag": {
@@ -101,7 +102,7 @@ DEFAULTS: dict[str, Any] = {
     "cli": {"default_session": "last", "krunner_session": "last"},
     "plasma": {
         "prefix": "ai ",
-        "global_shortcut": "Meta+Shift+A",
+        "global_shortcut": "",
         "default_page": "chat",
     },
     "skills": {
@@ -222,6 +223,14 @@ class Config:
 
 def apply_patch(cfg: Config, patch: dict) -> list[str]:
     changed: list[str] = []
+    patch = dict(patch)
+    if "plasma.global_shortcut" in patch and patch["plasma.global_shortcut"]:
+        from kde_ai.global_shortcut import to_portable
+
+        try:
+            patch["plasma.global_shortcut"] = to_portable(str(patch["plasma.global_shortcut"]))
+        except ValueError:
+            pass
     for key, value in patch.items():
         if key not in CONFIG_SET_WHITELIST:
             from kde_ai.errors import VALIDATION, RpcError
@@ -230,4 +239,8 @@ def apply_patch(cfg: Config, patch: dict) -> list[str]:
         cfg.set_path(key, value)
         changed.append(key)
     cfg.save()
+    if "plasma.global_shortcut" in changed:
+        from kde_ai.global_shortcut import apply_launch_shortcut
+
+        apply_launch_shortcut(str(cfg.get("plasma.global_shortcut") or ""))
     return changed

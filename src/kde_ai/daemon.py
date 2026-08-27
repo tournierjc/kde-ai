@@ -267,7 +267,9 @@ class Daemon:
                 "overflow": self.store.load_meta(sid).get("overflow", False),
             }
         if method == "config.get":
-            return self.cfg.redacted()
+            from kde_ai.global_shortcut import overlay_live_shortcut
+
+            return overlay_live_shortcut(self.cfg.redacted())
         if method == "config.set":
             keys = apply_patch(self.cfg, params.get("patch") or {})
             self.broadcast("config.changed", {"patch_keys": keys})

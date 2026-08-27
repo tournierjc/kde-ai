@@ -5,7 +5,7 @@ Results JSON `{ok, ...}` with stdout/stderr clipped to `memory.tool_result_chars
 
 | Tool | Notes |
 | --- | --- |
-| `system_info` | os-release, kernel, Plasma, Qt, session, GPU, hostname, user |
+| `system_info` | compact `summary`, GPU, monitors (EDID brand/model), CPU, RAM, motherboard, hostname, `distro`, `kernel` version, `kernel_cmdline` from `/proc/cmdline` plus Limine/GRUB config, Plasma, Qt, session |
 | `run_readonly_cmd` | named argv keys only (`user_systemctl_status`, `pacman_qi`, `pacman_qs`, `journal_user`, `journal_kernel`, `lspci_vga`, `echo_session`) |
 | `search_bugzilla` | REST, 2 GET/s token bucket |
 | `search_invent` | GitLab search, optional `invent.token` |

@@ -17,7 +17,7 @@ def test_force_run_clears_pause(xdg):
 def test_graphics_allow_list_present(xdg):
     cfg = Config()
     allow = [a.lower() for a in cfg.get("gpu.graphics_allow")]
-    for name in ("firefox", "kwin", "plasmashell", "chrome"):
+    for name in ("firefox", "kwin", "plasmashell", "chrome", "openlogi"):
         assert name in allow
     deny = cfg.get("gpu.denylist")
     assert any("comfy" in d for d in deny)

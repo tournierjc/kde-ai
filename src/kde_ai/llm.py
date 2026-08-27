@@ -132,8 +132,25 @@ class LlamaRuntime:
 
     def chat(self, messages: list[dict], tools: list[dict] | None, allowed_tool_names: list[str] | None) -> dict:
         if os.environ.get("KDE_AI_FAKE_LLM") == "1":
+            if any(m.get("role") == "tool" for m in messages):
+                return {
+                    "choices": [
+                        {
+                            "message": {
+                                "role": "assistant",
+                                "content": "Your system looks healthy. I used live tools rather than guessing versions.",
+                            }
+                        }
+                    ]
+                }
             last = messages[-1].get("content") if messages else ""
-            if "Plasma version" in str(last) or "plasma" in str(last).lower():
+            last_l = str(last).lower()
+            if (
+                "Plasma version" in str(last)
+                or "plasma" in last_l
+                or "gpu" in last_l
+                or "monitor" in last_l
+            ):
                 return {
                     "choices": [
                         {
@@ -150,17 +167,6 @@ class LlamaRuntime:
                                         },
                                     }
                                 ],
-                            }
-                        }
-                    ]
-                }
-            if any(m.get("role") == "tool" for m in messages):
-                return {
-                    "choices": [
-                        {
-                            "message": {
-                                "role": "assistant",
-                                "content": "Your system looks healthy. I used live tools rather than guessing versions.",
                             }
                         }
                     ]

@@ -10,7 +10,7 @@ Manual acceptance list. Automated smoke: `pytest` and `scripts/e2e_smoke.sh`.
 - [ ] Flatpak UI chats; privileged tools tell user to use host CLI/plasmoid
 - [ ] `search_docs` hits a real manpage; reindex during `paused`
 - [ ] CUDA compute denylist pauses; Firefox does not; idle VRAM 0 after 15s
-- [ ] KCM + KRunner (`ai ` / `kdeai `) + shortcut Meta+Shift+A
+- [ ] KCM + KRunner (`ai ` / `kdeai `) + optional window shortcut (unset by default)
 - [ ] Memory page: pin/unpin/forget-solved/summarize/export
 - [ ] Skills page: toggle shipped, install/remove a user skill, max 3
 - [ ] Config page persists via `config.set` and matches KCM

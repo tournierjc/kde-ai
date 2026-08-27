@@ -50,7 +50,7 @@ poll_hz = 2
 resume_hold_s = 10
 vram_other_mb = 2048
 denylist = ["comfy", "comfyui", "blender", "steam", "llama-server", "ollama", "python.*train"]
-graphics_allow = ["kwin", "plasmashell", "Xorg", "firefox", "chrome", "chromium", "discord"]
+graphics_allow = ["kwin", "plasmashell", "Xorg", "firefox", "chrome", "chromium", "discord", "openlogi"]
 
 [rag]
 enabled = true
@@ -74,7 +74,7 @@ krunner_session = "last"
 
 [plasma]
 prefix = "ai "
-global_shortcut = "Meta+Shift+A"
+global_shortcut = ""
 default_page = "chat"
 
 [skills]
@@ -86,5 +86,7 @@ enabled = ["kde-desktop", "cachyos", "bugs"]
 ## `config.set` whitelist
 
 `daemon.enabled`, `daemon.idle_unload_s`, `daemon.log_level`, `daemon.force_run_during_pause`, `llm.gguf`, `llm.temperature`, `llm.top_p`, `gpu.denylist`, `rag.enabled`, `rag.reindex_on_boot`, `cli.default_session`, `cli.krunner_session`, `plasma.prefix`, `plasma.global_shortcut`, `plasma.default_page`, `skills.enabled`, `network.offline`, `privilege.frontend_default`.
+
+`plasma.global_shortcut` is empty by default. The Config page applies it as soon as you capture a chord (`kde-ai shortcut Meta+Ctrl+K` / `kde-ai shortcut clear`). `config set` also accepts a bare token (not only JSON) so the plasmoid shell does not strip the quotes off a shortcut string.
 
 Anything else → `VALIDATION`.

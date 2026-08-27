@@ -16,10 +16,12 @@ from kde_ai.errors import (
 )
 from kde_ai.issue import IssueManager, looks_like_issue
 from kde_ai.logutil import log
-from kde_ai.prompting import assemble, clip_tokens, load_system_prompt
+from kde_ai.prompting import approx_tokens, assemble, clip_tokens, load_system_prompt
 from kde_ai.skills import ALL_TOOLS, enabled_ids, load_all_skills
 from kde_ai.tools import ToolContext, clip
 from kde_ai.tools.registry import HANDLERS, SCHEMAS
+from kde_ai.tools.system_info import handle as system_info_handle
+from kde_ai.tools.system_info import is_hardware_lookup, is_hardware_question, prefer_hardware_reply
 
 
 class Agent:
@@ -154,6 +156,9 @@ class Agent:
         if tool_sets:
             allowed = set.intersection(*tool_sets) & ALL_TOOLS
             allowed = list(allowed) if allowed else list(ALL_TOOLS)
+        if is_hardware_lookup(message, self.store.working_messages(sid)):
+            if allowed is None or "system_info" in allowed:
+                allowed = ["system_info"]
 
         rag_bits: list[str] = []
         failed = ""
@@ -170,12 +175,14 @@ class Agent:
             failed = "Failed attempts:\n" + "\n".join(notes) if notes else ""
 
         system = load_system_prompt(locale)
+        schema_list = [s for s in SCHEMAS if allowed is None or s["name"] in allowed]
         caps = {
             "solved_tok": self.cfg.get("memory.solved_tok", 400),
             "pins_tok": self.cfg.get("memory.pins_tok", 200),
             "summary_tok": self.cfg.get("memory.summary_tok", 600),
             "rag_tok": self.cfg.get("memory.rag_tok", 800),
             "prompt_tok_each": self.cfg.get("skills.prompt_tok_each", 400),
+            "tool_reserve": approx_tokens(json.dumps(schema_list, ensure_ascii=False)) + 256,
         }
         sys_text, working, stats = assemble(
             system=system,
@@ -198,9 +205,10 @@ class Agent:
         for m in working:
             messages.append(m)
 
-        schemas = [s for s in SCHEMAS if allowed is None or s["name"] in allowed]
+        schemas = schema_list
         max_rounds = int(self.cfg.get("llm.max_tool_rounds", 6))
         final_text = ""
+        hw_payload: dict | None = None
         for _ in range(max_rounds + 1):
             if self._cancel:
                 self._finish(stream_id, "cancel")
@@ -218,14 +226,38 @@ class Agent:
             msg = choice.get("message") or {}
             tool_calls = msg.get("tool_calls") or []
             content = msg.get("content") or ""
-            if content:
-                self.notify("stream.token", {"stream_id": stream_id, "text": content})
-                final_text += content
             if not tool_calls:
+                if not hw_payload and is_hardware_question(message, working):
+                    try:
+                        hw_payload = system_info_handle({}, None)
+                    except Exception:
+                        hw_payload = None
+                    if hw_payload:
+                        preview = clip(json.dumps(hw_payload, ensure_ascii=False), 500)
+                        self.notify(
+                            "stream.tool",
+                            {"stream_id": stream_id, "name": "system_info", "arguments": {}},
+                        )
+                        self.notify(
+                            "stream.tool",
+                            {
+                                "stream_id": stream_id,
+                                "name": "system_info",
+                                "arguments": {},
+                                "result_preview": preview,
+                            },
+                        )
+                if hw_payload:
+                    content = prefer_hardware_reply(message, content, hw_payload, working)
                 if content:
+                    self.notify("stream.token", {"stream_id": stream_id, "text": content})
+                    final_text += content
                     self.store.append_turn(sid, {"role": "assistant", "content": content})
                 self._finish(stream_id, "complete")
                 return
+            if content:
+                self.notify("stream.token", {"stream_id": stream_id, "text": content})
+                final_text += content
             assistant_msg = {"role": "assistant", "content": content or "", "tool_calls": tool_calls}
             messages.append(assistant_msg)
             self.store.append_turn(sid, assistant_msg)
@@ -275,6 +307,8 @@ class Agent:
                 }
                 messages.append(tool_msg)
                 self.store.append_turn(sid, tool_msg)
+                if name == "system_info" and isinstance(result, dict) and result.get("ok"):
+                    hw_payload = result
                 if name == "search_docs" and result.get("hits"):
                     rag_bits.extend(
                         f"{h.get('path')}: {h.get('snippet')}" for h in result["hits"][:5]

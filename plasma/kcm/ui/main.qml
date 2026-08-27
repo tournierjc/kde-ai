@@ -6,19 +6,38 @@ import org.kde.kcmutils as KCM
 
 KCM.SimpleKCM {
     title: "KDE AI"
-    ColumnLayout {
+    Kirigami.FormLayout {
         QQC2.Label {
+            Kirigami.FormData.isSection: true
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
-            text: "Same keys as the plasmoid Config page. Changes go through config.get / config.set (no invent token over RPC)."
+            text: "Local agent"
         }
-        QQC2.Switch { id: en; text: "Enabled"; checked: true; Accessible.name: "Agent enabled" }
-        QQC2.Switch { text: "RAG"; checked: true; Accessible.name: "RAG enabled" }
-        QQC2.Switch { text: "Force run during GPU pause (unsafe)"; checked: false; Accessible.name: "Force run during pause" }
-        QQC2.Label { text: "Idle unload seconds" }
-        QQC2.SpinBox { from: 5; to: 120; value: 15; Accessible.name: "Idle unload seconds" }
-        QQC2.Label { text: "Shortcut default: Meta+Shift+A · KRunner prefix: ai " }
-        QQC2.Label { wrapMode: Text.WordWrap; Layout.fillWidth: true; text: "Linger (SSH): loginctl enable-linger $USER · GGUF: scripts/fetch-gguf.sh" }
-        QQC2.Button { text: "Apply"; Accessible.name: "Apply config" }
+        QQC2.Switch {
+            Kirigami.FormData.label: "Agent"
+            text: "Run the local agent"
+            checked: true
+            Accessible.name: "Agent enabled"
+        }
+        QQC2.Switch {
+            Kirigami.FormData.label: "RAG"
+            text: "Search man pages and local docs"
+            checked: true
+            Accessible.name: "RAG enabled"
+        }
+        QQC2.Switch {
+            Kirigami.FormData.label: "GPU yield"
+            text: "Force run during GPU pause (unsafe)"
+            checked: false
+            Accessible.name: "Force run during pause"
+        }
+        QQC2.SpinBox {
+            Kirigami.FormData.label: "Idle unload"
+            from: 5
+            to: 120
+            value: 15
+            Accessible.name: "Idle unload seconds"
+        }
+        QQC2.Button { text: "Apply"; Accessible.name: "Apply config"; icon.name: "document-save" }
     }
 }

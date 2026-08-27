@@ -82,6 +82,157 @@ def gold_records() -> list[dict]:
                 "Plasma 6.3.0 on CachyOS (kernel 6.12.0-cachyos).",
             )
         )
+    hw = {
+        "ok": True,
+        "summary": "2 monitors (DP-1 3840x2160@120Hz primary; HDMI-A-1 3840x2160@60Hz); GPU NVIDIA GeForce RTX 3090 (24576 MiB, driver 610.57); plasmashell 6.7.4; wayland",
+        "gpu": "NVIDIA GeForce RTX 3090 (24576 MiB, driver 610.57)",
+        "monitor_count": 2,
+        "monitors": [
+            {
+                "name": "DP-1",
+                "resolution": "3840x2160",
+                "refresh_hz": 120,
+                "primary": True,
+                "brand": "Acer",
+                "model": "XB273K GP",
+            },
+            {
+                "name": "HDMI-A-1",
+                "resolution": "3840x2160",
+                "refresh_hz": 60,
+                "primary": False,
+                "brand": "ASUS",
+                "model": "MG28U",
+            },
+        ],
+        "plasma": "plasmashell 6.7.4",
+        "session": "wayland",
+    }
+    add(
+        _tool_traj(
+            "gold-system_info-hw-monitors",
+            "system_info",
+            {},
+            hw,
+            "How many monitors do I have?",
+            "2 monitors: DP-1 3840x2160@120Hz (primary) and HDMI-A-1 3840x2160@60Hz.",
+        )
+    )
+    add(
+        _tool_traj(
+            "gold-system_info-hw-gpu",
+            "system_info",
+            {},
+            hw,
+            "What GPU am I using right now?",
+            "NVIDIA GeForce RTX 3090 (24576 MiB, driver 610.57).",
+        )
+    )
+    add(
+        _tool_traj(
+            "gold-system_info-hw-both",
+            "system_info",
+            {},
+            hw,
+            "Give me the current GPU and the number of monitors.",
+            "GPU NVIDIA GeForce RTX 3090 (24576 MiB). 2 monitors.",
+        )
+    )
+    add(
+        _tool_traj(
+            "gold-system_info-hw-brand",
+            "system_info",
+            {},
+            hw,
+            "What brand are my monitors?",
+            "Acer XB273K GP on DP-1 and ASUS MG28U on HDMI-A-1.",
+        )
+    )
+    hw_boot = {
+        **hw,
+        "kernel": "7.2.0-1-cachyos",
+        "kernel_cmdline": "quiet nowatchdog splash nvidia_drm.modeset=1 nvidia_drm.fbdev=1",
+        "kernel_cmdline_params": [
+            "quiet",
+            "nowatchdog",
+            "splash",
+            "nvidia_drm.modeset=1",
+            "nvidia_drm.fbdev=1",
+        ],
+        "kernel_cmdline_configured": "quiet nowatchdog splash nvidia_drm.modeset=1 nvidia_drm.fbdev=1",
+    }
+    add(
+        _tool_traj(
+            "gold-system_info-hw-cmdline",
+            "system_info",
+            {},
+            hw_boot,
+            "What are my kernel parameters forced at startup?",
+            "quiet nowatchdog splash nvidia_drm.modeset=1 nvidia_drm.fbdev=1 (from /proc/cmdline, not the kernel version).",
+        )
+    )
+    hw_machine = {
+        **hw_boot,
+        "cpu": "AMD Ryzen 9 5900X 12-Core Processor",
+        "cpu_cores": 12,
+        "cpu_threads": 24,
+        "ram_mb": 31999,
+        "distro": "CachyOS",
+        "hostname": "jct-desktop",
+        "qt": "6.11.2",
+        "board": "MPG X570 GAMING PRO CARBON WIFI (MS-7B93)",
+        "board_vendor": "Micro-Star International Co., Ltd.",
+    }
+    add(
+        _tool_traj(
+            "gold-system_info-hw-kernel-version",
+            "system_info",
+            {},
+            hw_machine,
+            "What kernel version am I running?",
+            "Kernel version: 7.2.0-1-cachyos.",
+        )
+    )
+    add(
+        _tool_traj(
+            "gold-system_info-hw-cpu",
+            "system_info",
+            {},
+            hw_machine,
+            "What CPU do I have?",
+            "AMD Ryzen 9 5900X 12-Core Processor (12 cores, 24 threads).",
+        )
+    )
+    add(
+        _tool_traj(
+            "gold-system_info-hw-ram",
+            "system_info",
+            {},
+            hw_machine,
+            "How much RAM do I have?",
+            "RAM: 31 GiB (31999 MiB).",
+        )
+    )
+    add(
+        _tool_traj(
+            "gold-system_info-hw-distro",
+            "system_info",
+            {},
+            hw_machine,
+            "What distro is this?",
+            "CachyOS.",
+        )
+    )
+    add(
+        _tool_traj(
+            "gold-system_info-hw-session",
+            "system_info",
+            {},
+            hw_machine,
+            "Am I on Wayland or X11?",
+            "wayland.",
+        )
+    )
     for i, name in enumerate(READONLY):
         pkg = {"pkg": "plasma-workspace"} if name.startswith("pacman") else {}
         add(
@@ -461,8 +612,11 @@ def gold_records() -> list[dict]:
                 False,
                 ["kde-desktop"],
                 [
-                    user(f"What does Meta+Shift+A do in kde-ai? ({i})"),
-                    assistant_text("Meta+Shift+A toggles the KDE AI plasmoid. This is not an issue to mark solved."),
+                    user(f"Does kde-ai ship a default global shortcut? ({i})"),
+                    assistant_text(
+                        "No. The window shortcut is empty by default; set it in Config or System Settings. "
+                        "This is not an issue to mark solved."
+                    ),
                 ],
                 tags=["info_no_solve"],
             )

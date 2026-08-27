@@ -84,12 +84,18 @@ def assemble(
         extra += clip_tokens(failed_notes, 200)
 
     used = approx_tokens(sys_full) + approx_tokens(extra)
-    remain = max(200, ctx - used - 64)
+    tool_reserve = int(caps.get("tool_reserve", 1024))
+    remain = max(200, ctx - used - tool_reserve - 64)
     kept: list[dict] = []
     for msg in reversed(working):
         t = approx_tokens(str(msg.get("content") or "") + str(msg.get("tool_calls") or ""))
         if stats["working_tokens"] + t > remain:
             stats["overflow"] = True
+            if not kept:
+                clipped = dict(msg)
+                clipped["content"] = clip_tokens(str(msg.get("content") or ""), max(32, remain))
+                kept.append(clipped)
+                stats["working_tokens"] += approx_tokens(str(clipped.get("content") or ""))
             break
         kept.append(msg)
         stats["working_tokens"] += t
