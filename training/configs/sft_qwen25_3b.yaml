@@ -21,3 +21,5 @@ save_steps: 500
 max_seq_length: 4096
 packing: true
 bf16: true
+assistant_only_loss: true
+attn_implementation: sdpa
