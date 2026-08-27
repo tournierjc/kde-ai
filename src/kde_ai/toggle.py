@@ -1,106 +1,50 @@
 #!/usr/bin/env python3
-"""Open or raise the KDE AI window (optional global shortcut, unset by default)."""
+"""Toggle the KDE AI window (optional global shortcut, unset by default)."""
 
 from __future__ import annotations
 
 import os
 import shutil
+import signal
 import subprocess
 import sys
-import tempfile
-from pathlib import Path
-
-_KWIN_RAISE = """
-const wins = (typeof workspace.windowList === "function")
-    ? workspace.windowList()
-    : workspace.clientList();
-for (let i = 0; i < wins.length; ++i) {
-    const w = wins[i];
-    const klass = String(w.resourceClass);
-    const cap = String(w.caption);
-    if (klass.indexOf("plasmawindowed") === -1 || cap.indexOf("KDE AI") === -1) {
-        continue;
-    }
-    if (w.minimized) {
-        w.minimized = false;
-    }
-    if (typeof workspace.activateWindow === "function") {
-        workspace.activateWindow(w);
-    } else {
-        workspace.activeWindow = w;
-    }
-}
-"""
 
 
-def _qdbus() -> str | None:
-    return shutil.which("qdbus6") or shutil.which("qdbus")
-
-
-def _activate_existing() -> bool:
-    """Raise an already-running plasmawindowed KDE AI window via KWin."""
-    qdbus = _qdbus()
-    if not qdbus:
-        return False
-    path = None
-    plugin = "kdeai-raise"
+def _pids(proc_name: str, needle: str | None = None) -> list[int]:
     try:
-        with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as fh:
-            fh.write(_KWIN_RAISE)
-            path = fh.name
-        subprocess.run(
-            [qdbus, "org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting.unloadScript", plugin],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-        )
-        loaded = subprocess.run(
-            [qdbus, "org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting.loadScript", path, plugin],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        sid = (loaded.stdout or "").strip()
-        if sid.isdigit():
-            subprocess.run(
-                [qdbus, "org.kde.KWin", f"/Scripting/Script{sid}", "org.kde.kwin.Script.run"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=False,
-            )
-        else:
-            subprocess.run(
-                [qdbus, "org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting.start"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=False,
-            )
-        subprocess.run(
-            [qdbus, "org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting.unloadScript", plugin],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-        )
-    finally:
-        if path:
-            Path(path).unlink(missing_ok=True)
-    return True
-
-
-def _plasmawindowed_running() -> bool:
-    try:
-        out = subprocess.check_output(["pgrep", "-a", "plasmawindowed"], text=True)
+        out = subprocess.check_output(["pgrep", "-a", proc_name], text=True)
     except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
-    return "org.kde.kdeai" in out
+        return []
+    pids: list[int] = []
+    me = os.getpid()
+    for line in out.splitlines():
+        if needle is not None and needle not in line:
+            continue
+        try:
+            pid = int(line.split(None, 1)[0])
+        except ValueError:
+            continue
+        if pid != me:
+            pids.append(pid)
+    return pids
+
+
+def _close(pids: list[int]) -> bool:
+    closed = False
+    for pid in pids:
+        try:
+            os.kill(pid, signal.SIGTERM)
+            closed = True
+        except ProcessLookupError:
+            continue
+    return closed
 
 
 def main() -> None:
     if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
         print("KDE AI: no graphical session.", file=sys.stderr)
         raise SystemExit(1)
-    if _plasmawindowed_running():
-        _activate_existing()
+    if _close(_pids("plasmawindowed", "org.kde.kdeai") or _pids("kde-ai-ui")):
         return
     windowed = shutil.which("plasmawindowed")
     if windowed:

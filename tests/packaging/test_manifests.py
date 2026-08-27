@@ -45,9 +45,10 @@ def test_setup_script_restores_plasma_previous_activity():
     assert "Meta+Shift+A,none" in script
 
 
-def test_toggle_raises_existing_plasmawindowed():
+def test_toggle_closes_existing_plasmawindowed():
     src = (REPO / "src/kde_ai/toggle.py").read_text(encoding="utf-8")
-    assert "_activate_existing" in src
+    assert "_close" in src
+    assert "SIGTERM" in src
     assert "org.kde.kdeai" in src
     assert "plasmawindowed" in src
 
