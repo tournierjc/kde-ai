@@ -60,14 +60,26 @@ def main() -> None:
     keep = [c for c in raw.column_names if c == "messages"]
     ds = raw.remove_columns([c for c in raw.column_names if c not in keep])
 
+    # transformers 5 / TRL 1.12 TrainingArguments dropped warmup_ratio.
+    per_device = int(cfg.get("per_device_train_batch_size", 1))
+    grad_acc = int(cfg.get("gradient_accumulation_steps", 16))
+    epochs = float(cfg.get("num_train_epochs", 2))
+    if cfg.get("warmup_steps") is not None:
+        warmup_steps = max(0, int(cfg["warmup_steps"]))
+    else:
+        batch = max(1, per_device * grad_acc)
+        unpacked = max(1, int((len(ds) / batch) * epochs * float(cfg.get("warmup_ratio", 0.03))))
+        # Packing shortens the step count; cap so warmup stays a small fraction of the run.
+        warmup_steps = max(1, min(unpacked, 80))
+
     sft_args = SFTConfig(
         output_dir=out_dir,
-        per_device_train_batch_size=int(cfg.get("per_device_train_batch_size", 1)),
-        gradient_accumulation_steps=int(cfg.get("gradient_accumulation_steps", 16)),
-        num_train_epochs=float(cfg.get("num_train_epochs", 2)),
+        per_device_train_batch_size=per_device,
+        gradient_accumulation_steps=grad_acc,
+        num_train_epochs=epochs,
         learning_rate=float(cfg.get("learning_rate", 2e-4)),
         lr_scheduler_type="cosine",
-        warmup_ratio=float(cfg.get("warmup_ratio", 0.03)),
+        warmup_steps=warmup_steps,
         bf16=bool(cfg.get("bf16", True)) and torch.cuda.is_available(),
         gradient_checkpointing=True,
         gradient_checkpointing_kwargs={"use_reentrant": False},
