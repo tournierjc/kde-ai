@@ -44,15 +44,18 @@ def main() -> None:
     if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
         print("KDE AI: no graphical session.", file=sys.stderr)
         raise SystemExit(1)
-    if _close(_pids("plasmawindowed", "org.kde.kdeai") or _pids("kde-ai-ui")):
+    if _close(_pids("kde-ai-ui") or _pids("plasmawindowed", "org.kde.kdeai")):
         return
-    windowed = shutil.which("plasmawindowed")
-    if windowed:
-        os.execvp(windowed, [windowed, "org.kde.kdeai"])
+    # Wayland's task manager maps windows by desktop file name.
+    # plasmawindowed hardcodes org.kde.plasmawindowed → the Plasma logo, so
+    # prefer kde-ai-ui which reports org.kde.kdeai and ships the circuit-brain icon.
     ui = shutil.which("kde-ai-ui")
     if ui:
         os.execvp(ui, [ui])
-    print("KDE AI: install plasmawindowed (plasma-workspace) or kde-ai-ui.", file=sys.stderr)
+    windowed = shutil.which("plasmawindowed")
+    if windowed:
+        os.execvp(windowed, [windowed, "org.kde.kdeai"])
+    print("KDE AI: install kde-ai-ui (pip install -e '.[ui]') or plasmawindowed.", file=sys.stderr)
     raise SystemExit(1)
 
 

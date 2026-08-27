@@ -51,6 +51,10 @@ def test_toggle_closes_existing_plasmawindowed():
     assert "SIGTERM" in src
     assert "org.kde.kdeai" in src
     assert "plasmawindowed" in src
+    assert "kde-ai-ui" in src
+    ui_first = src.find("shutil.which(\"kde-ai-ui\")")
+    windowed = src.find("shutil.which(\"plasmawindowed\")")
+    assert ui_first != -1 and windowed != -1 and ui_first < windowed
 
 
 def test_config_page_has_customizable_shortcut():
@@ -93,6 +97,8 @@ def test_app_icon_is_shipped():
     assert "_app_icon" in ui
     qml = (REPO / "plasma/plasmoid/contents/ui/main.qml").read_text(encoding="utf-8")
     assert 'icon.name: paused ? "media-playback-pause" : "org.kde.kdeai"' in qml
+    assert 'icon.source: paused ? "" : Qt.resolvedUrl("../icons/org.kde.kdeai.svg")' in qml
+    assert 'Plasmoid.icon: "org.kde.kdeai"' in qml
 
 
 def test_pkgbuild_requires_llama_cpp():

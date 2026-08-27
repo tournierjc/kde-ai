@@ -25,11 +25,13 @@ PlasmoidItem {
 
     toolTipMainText: "KDE AI"
     toolTipSubText: paused ? "Paused — GPU in use" : "Local KDE/CachyOS agent"
+    Plasmoid.icon: "org.kde.kdeai"
 
     compactRepresentation: PlasmaComponents.ToolButton {
         text: paused ? "AI ‖" : (awaiting ? "AI ?" : "AI")
         Accessible.name: paused ? "KDE AI paused" : "KDE AI agent"
         icon.name: paused ? "media-playback-pause" : "org.kde.kdeai"
+        icon.source: paused ? "" : Qt.resolvedUrl("../icons/org.kde.kdeai.svg")
         onClicked: root.expanded = !root.expanded
         onPressAndHold: root.expanded = true
     }
