@@ -33,7 +33,7 @@ kde-ai-toggle = "kde_ai.toggle:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-kde_ai = ["prompts/*.txt", "data/*.json", "shipped_skills/*/SKILL.md"]
+kde_ai = ["prompts/*.txt", "data/*.json", "shipped_skills/*/SKILL.md", "icons/*.svg"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

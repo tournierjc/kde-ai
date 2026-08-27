@@ -15,6 +15,12 @@ install -d "$PREFIX/share/kpackage/kcms/kcm_kdeai" || true
 cp -a "$ROOT/plasma/kcm/." "$PREFIX/share/kpackage/kcms/kcm_kdeai/" 2>/dev/null || true
 install -d "$PREFIX/share/applications"
 install -m644 "$ROOT/packaging/org.kde.kdeai.desktop" "$PREFIX/share/applications/org.kde.kdeai.desktop"
+install -d "$PREFIX/share/icons/hicolor/scalable/apps"
+install -m644 "$ROOT/src/kde_ai/icons/org.kde.kdeai.svg" \
+  "$PREFIX/share/icons/hicolor/scalable/apps/org.kde.kdeai.svg"
+install -d "$PREFIX/share/plasma/plasmoids/org.kde.kdeai/contents/icons"
+install -m644 "$ROOT/src/kde_ai/icons/org.kde.kdeai.svg" \
+  "$PREFIX/share/plasma/plasmoids/org.kde.kdeai/contents/icons/org.kde.kdeai.svg"
 install -d "$HOME/.local/share/kde-ai-shipped-skills"
 if [[ "$PREFIX" == "$HOME/.local" ]]; then
   cp -a "$ROOT/skills/." "$HOME/.local/share/kde-ai-shipped-skills/"
@@ -55,6 +61,9 @@ fi
 systemctl --user daemon-reload || true
 systemctl --user enable --now kde-ai-agent.service 2>/dev/null || true
 
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+  gtk-update-icon-cache -f "$PREFIX/share/icons/hicolor" >/dev/null 2>&1 || true
+fi
 if command -v kbuildsycoca6 >/dev/null 2>&1; then
   kbuildsycoca6 >/dev/null 2>&1 || true
 fi

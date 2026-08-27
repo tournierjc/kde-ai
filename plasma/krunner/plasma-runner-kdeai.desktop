@@ -2,7 +2,7 @@
 Name=KDE AI
 Comment=Ask the local KDE/CachyOS agent
 Type=Service
-Icon=help-hint
+Icon=org.kde.kdeai
 X-KDE-PluginInfo-Name=kdeai
 X-KDE-PluginInfo-Version=0.1
 X-KDE-PluginInfo-License=GPL

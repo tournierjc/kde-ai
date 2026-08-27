@@ -25,5 +25,9 @@ package() {
   install -Dm644 packaging/man/kde-ai.1 "$pkgdir/usr/share/man/man1/kde-ai.1"
   install -Dm644 packaging/org.kde.kdeai.metainfo.xml "$pkgdir/usr/share/metainfo/org.kde.kdeai.metainfo.xml"
   install -Dm644 packaging/org.kde.kdeai.desktop "$pkgdir/usr/share/applications/org.kde.kdeai.desktop"
+  install -Dm644 src/kde_ai/icons/org.kde.kdeai.svg \
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/org.kde.kdeai.svg"
+  install -Dm644 src/kde_ai/icons/org.kde.kdeai.svg \
+    "$pkgdir/usr/share/plasma/plasmoids/org.kde.kdeai/contents/icons/org.kde.kdeai.svg"
   install -Dm644 packaging/polkit/org.kde.kdeai.policy "$pkgdir/usr/share/polkit-1/actions/org.kde.kdeai.policy"
 }

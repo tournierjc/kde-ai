@@ -31,6 +31,17 @@ def _muted(label) -> None:
     label.setPalette(pal)
 
 
+def _app_icon():
+    from importlib.resources import files
+
+    from PySide6.QtGui import QIcon
+
+    svg = files("kde_ai").joinpath("icons/org.kde.kdeai.svg")
+    if svg.is_file():
+        return QIcon(str(svg))
+    return QIcon.fromTheme("org.kde.kdeai")
+
+
 def _heading(text: str):
     from PySide6.QtWidgets import QLabel
 
@@ -78,13 +89,15 @@ def main() -> None:
     app = QApplication(sys.argv)
     app.setApplicationName("KDE AI")
     app.setDesktopFileName("org.kde.kdeai")
+    icon = _app_icon()
+    app.setWindowIcon(icon)
     if "Breeze" in QStyleFactory.keys():
         app.setStyle("Breeze")
 
     rpc = _connect()
     win = QWidget()
     win.setWindowTitle("KDE AI")
-    win.setWindowIcon(QIcon.fromTheme("help-hint"))
+    win.setWindowIcon(icon)
     win.setMinimumSize(560, 580)
     root = QVBoxLayout(win)
     root.setContentsMargins(16, 16, 16, 16)
@@ -323,7 +336,7 @@ def main() -> None:
     no.clicked.connect(lambda: confirm(False))
     bug.clicked.connect(copy_bug)
     sessions.currentIndexChanged.connect(on_session)
-    tabs.addTab(chat, theme_icon("chat", "meeting-attending", "help-hint"), "Chat")
+    tabs.addTab(chat, icon, "Chat")
 
     mem = QWidget()
     ml = QVBoxLayout(mem)

@@ -6,6 +6,7 @@
 - CachyOS PKGBUILD `packaging/cachyos/PKGBUILD` (depends on `llama-cpp` for `llama-server`)
 - Window shortcut unset by default (`org.kde.kdeai.desktop` → `kde-ai-toggle`; assign in Config or System Settings → Shortcuts)
 - Flatpak **UI only** `packaging/flatpak/org.kde.kdeai.yml` — Kirigami app talks to the host socket via `--filesystem=xdg-run/kde-ai`. Privileged tools require host CLI or native plasmoid.
+- App icon `src/kde_ai/icons/org.kde.kdeai.svg` (hicolor `org.kde.kdeai`)
 - AppStream `packaging/org.kde.kdeai.metainfo.xml`
 - Polkit: prefer raw `pkexec` of allowlisted binaries; optional `packaging/polkit/org.kde.kdeai.policy`
 

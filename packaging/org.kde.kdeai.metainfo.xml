@@ -9,4 +9,5 @@
     <p>Chat with a local agent that can inspect your Plasma/CachyOS system, search bugs, and manage session memory. Privileged actions always prompt via sudo or polkit.</p>
   </description>
   <launchable type="desktop-id">org.kde.kdeai.desktop</launchable>
+  <icon type="stock">org.kde.kdeai</icon>
 </component>

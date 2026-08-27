@@ -66,6 +66,35 @@ def test_config_page_has_customizable_shortcut():
     assert "enable-linger" not in qml
 
 
+def test_app_icon_is_shipped():
+    svg = REPO / "src/kde_ai/icons/org.kde.kdeai.svg"
+    assert svg.is_file()
+    text = svg.read_text(encoding="utf-8")
+    assert 'viewBox="0 0 256 256"' in text
+    assert 'rx="56"' in text
+    desktop = (REPO / "packaging/org.kde.kdeai.desktop").read_text(encoding="utf-8")
+    assert "Icon=org.kde.kdeai" in desktop
+    plasmoid = (REPO / "plasma/plasmoid/metadata.json").read_text(encoding="utf-8")
+    assert '"Icon": "org.kde.kdeai"' in plasmoid
+    kcm = (REPO / "plasma/kcm/metadata.json").read_text(encoding="utf-8")
+    assert '"Icon": "org.kde.kdeai"' in kcm
+    runner = (REPO / "plasma/krunner/plasma-runner-kdeai.desktop").read_text(encoding="utf-8")
+    assert "Icon=org.kde.kdeai" in runner
+    install = (REPO / "scripts/install.sh").read_text(encoding="utf-8")
+    assert "hicolor/scalable/apps" in install
+    assert "org.kde.kdeai.svg" in install
+    pkg = (REPO / "packaging/cachyos/PKGBUILD").read_text(encoding="utf-8")
+    assert "org.kde.kdeai.svg" in pkg
+    meta = (REPO / "packaging/org.kde.kdeai.metainfo.xml").read_text(encoding="utf-8")
+    assert "<icon type=\"stock\">org.kde.kdeai</icon>" in meta
+    pyproject = (REPO / "pyproject.toml").read_text(encoding="utf-8")
+    assert "icons/*.svg" in pyproject
+    ui = (REPO / "src/kde_ai/ui.py").read_text(encoding="utf-8")
+    assert "_app_icon" in ui
+    qml = (REPO / "plasma/plasmoid/contents/ui/main.qml").read_text(encoding="utf-8")
+    assert 'icon.name: paused ? "media-playback-pause" : "org.kde.kdeai"' in qml
+
+
 def test_pkgbuild_requires_llama_cpp():
     pkg = (REPO / "packaging/cachyos/PKGBUILD").read_text(encoding="utf-8")
     assert "llama-cpp" in pkg

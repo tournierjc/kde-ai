@@ -1,7 +1,7 @@
 {
   "KPlugin": {
     "Description": "Configure the local KDE AI agent",
-    "Icon": "help-hint",
+    "Icon": "org.kde.kdeai",
     "Name": "KDE AI",
     "ServiceTypes": ["KCModule"]
   },

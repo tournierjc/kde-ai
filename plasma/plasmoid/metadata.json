@@ -5,7 +5,7 @@
         "Category": "Utilities",
         "Description": "Local KDE/CachyOS AI agent",
         "EnabledByDefault": true,
-        "Icon": "help-hint",
+        "Icon": "org.kde.kdeai",
         "Id": "org.kde.kdeai",
         "License": "GPL-2.0+",
         "Name": "KDE AI",

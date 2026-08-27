@@ -29,7 +29,7 @@ PlasmoidItem {
     compactRepresentation: PlasmaComponents.ToolButton {
         text: paused ? "AI ‖" : (awaiting ? "AI ?" : "AI")
         Accessible.name: paused ? "KDE AI paused" : "KDE AI agent"
-        icon.name: paused ? "media-playback-pause" : "help-hint"
+        icon.name: paused ? "media-playback-pause" : "org.kde.kdeai"
         onClicked: root.expanded = !root.expanded
         onPressAndHold: root.expanded = true
     }
@@ -104,7 +104,7 @@ PlasmoidItem {
             QQC2.TabBar {
                 id: tabs
                 Layout.fillWidth: true
-                QQC2.TabButton { text: "Chat"; icon.name: "help-hint"; Accessible.name: "Chat page" }
+                QQC2.TabButton { text: "Chat"; icon.name: "org.kde.kdeai"; Accessible.name: "Chat page" }
                 QQC2.TabButton { text: "Memory"; icon.name: "pin"; Accessible.name: "Memory page" }
                 QQC2.TabButton { text: "Skills"; icon.name: "applications-development"; Accessible.name: "Skills page" }
                 QQC2.TabButton { text: "Config"; icon.name: "configure"; Accessible.name: "Config page" }

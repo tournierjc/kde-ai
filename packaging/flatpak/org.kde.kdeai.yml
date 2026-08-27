@@ -14,6 +14,7 @@ modules:
     buildsystem: simple
     build-commands:
       - pip3 install --prefix=/app .
+      - install -Dm644 src/kde_ai/icons/org.kde.kdeai.svg /app/share/icons/hicolor/scalable/apps/org.kde.kdeai.svg
     sources:
       - type: dir
         path: ../..

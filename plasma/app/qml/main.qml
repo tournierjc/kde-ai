@@ -6,6 +6,7 @@ import org.kde.kirigami as Kirigami
 Kirigami.ApplicationWindow {
     id: win
     title: "KDE AI"
+    icon.name: "org.kde.kdeai"
     minimumWidth: 520
     minimumHeight: 560
     width: 720
@@ -18,7 +19,7 @@ Kirigami.ApplicationWindow {
             QQC2.TabBar {
                 id: tabs
                 Layout.fillWidth: true
-                QQC2.TabButton { text: "Chat"; icon.name: "chat" }
+                QQC2.TabButton { text: "Chat"; icon.name: "org.kde.kdeai" }
                 QQC2.TabButton { text: "Memory"; icon.name: "pin" }
                 QQC2.TabButton { text: "Skills"; icon.name: "applications-development" }
                 QQC2.TabButton { text: "Config"; icon.name: "configure" }
