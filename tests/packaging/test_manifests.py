@@ -90,9 +90,9 @@ def test_session_dialogs_keep_fields_inside():
     assert "PromptDialog" in qml
     assert "width: Kirigami.Units.gridUnit * 18" not in qml
     assert "Layout.fillWidth: true" in qml
-    assert 'text: "Cancel"' in qml
-    assert "Dialog.Cancel" not in qml
     delete = qml.split("id: delDlg")[1].split("function send()")[0]
+    assert "function confirm()" in delete
+    assert "Qt.Key_Return" in delete
     assert 'text: "OK"' in delete
-    assert "isDefault = true" in delete
     assert "forceActiveFocus" in delete
+    assert "enabled: !delDlg.visible" in qml

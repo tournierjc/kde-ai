@@ -41,7 +41,7 @@ Item {
             QQC2.ToolButton {
                 icon.name: "edit-delete"
                 Accessible.name: "Delete session"
-                enabled: sessionModel.count > 0
+                enabled: sessionModel.count > 0 && !delDlg.visible
                 QQC2.ToolTip.visible: hovered
                 QQC2.ToolTip.text: "Delete session"
                 onClicked: delDlg.open()
@@ -90,6 +90,7 @@ Item {
                 Layout.fillWidth: true
                 placeholderText: "Message"
                 Accessible.name: "Chat input"
+                enabled: !delDlg.visible && !newDlg.opened
                 onAccepted: send()
             }
             QQC2.Button {
@@ -114,6 +115,7 @@ Item {
 
     Kirigami.PromptDialog {
         id: newDlg
+        parent: QQC2.Overlay.overlay
         title: "New session"
         preferredWidth: Kirigami.Units.gridUnit * 22
         standardButtons: Kirigami.Dialog.NoButton
@@ -144,35 +146,103 @@ Item {
         }
     }
 
-    Kirigami.PromptDialog {
+    // In-page overlay (not a Popup): plasmawindowed never delivers Return to
+    // Kirigami/QQC2 dialogs because the chat field keeps focus.
+    FocusScope {
         id: delDlg
-        title: "Delete session"
-        subtitle: "Delete “" + (sessions.currentText || "this session") + "”? This cannot be undone."
-        preferredWidth: Kirigami.Units.gridUnit * 22
-        standardButtons: Kirigami.Dialog.NoButton
-        customFooterActions: [
-            Kirigami.Action {
-                id: delOk
-                text: "OK"
-                icon.name: "dialog-ok"
-                onTriggered: {
-                    chatPage.deleteCurrent()
-                    delDlg.close()
-                }
-            },
-            Kirigami.Action {
-                text: "Cancel"
-                icon.name: "dialog-cancel"
-                onTriggered: delDlg.close()
+        anchors.fill: parent
+        visible: false
+        z: 100
+        activeFocusOnTab: true
+
+        function open() {
+            input.focus = false
+            visible = true
+            forceActiveFocus()
+            delOkBtn.forceActiveFocus()
+        }
+        function close() {
+            visible = false
+        }
+        function confirm() {
+            chatPage.deleteCurrent()
+            close()
+        }
+
+        Keys.onPressed: (event) => {
+            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                delDlg.confirm()
+                event.accepted = true
+            } else if (event.key === Qt.Key_Escape) {
+                delDlg.close()
+                event.accepted = true
             }
-        ]
-        onOpened: Qt.callLater(function () {
-            const btn = delDlg.customFooterButton(delOk)
-            if (!btn)
-                return
-            btn.isDefault = true
-            btn.forceActiveFocus()
-        })
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            color: Qt.rgba(0, 0, 0, 0.45)
+            MouseArea {
+                anchors.fill: parent
+                onClicked: delDlg.close()
+            }
+        }
+
+        Rectangle {
+            id: delCard
+            anchors.centerIn: parent
+            width: Math.min(parent.width - Kirigami.Units.gridUnit * 2, Kirigami.Units.gridUnit * 24)
+            height: delCardLayout.implicitHeight + Kirigami.Units.largeSpacing * 2
+            radius: Kirigami.Units.cornerRadius
+            color: Kirigami.Theme.backgroundColor
+            border.color: Kirigami.Theme.textColor
+            border.width: 1
+            opacity: 0.97
+
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.AllButtons
+            }
+
+            ColumnLayout {
+                id: delCardLayout
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: Kirigami.Units.largeSpacing
+                spacing: Kirigami.Units.largeSpacing
+
+                QQC2.Label {
+                    text: "Delete session"
+                    font.bold: true
+                    Layout.fillWidth: true
+                }
+                QQC2.Label {
+                    text: "Delete “" + (sessions.currentText || "this session") + "”? This cannot be undone."
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+                RowLayout {
+                    Layout.alignment: Qt.AlignRight
+                    QQC2.Button {
+                        id: delOkBtn
+                        text: "OK"
+                        icon.name: "dialog-ok"
+                        highlighted: true
+                        Accessible.name: "Confirm delete session"
+                        Keys.onReturnPressed: delDlg.confirm()
+                        Keys.onEnterPressed: delDlg.confirm()
+                        onClicked: delDlg.confirm()
+                    }
+                    QQC2.Button {
+                        text: "Cancel"
+                        icon.name: "dialog-cancel"
+                        Accessible.name: "Cancel delete session"
+                        onClicked: delDlg.close()
+                    }
+                }
+            }
+        }
     }
 
     function send() {
