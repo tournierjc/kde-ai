@@ -150,6 +150,8 @@ class LlamaRuntime:
                 or "plasma" in last_l
                 or "gpu" in last_l
                 or "monitor" in last_l
+                or "uptime" in last_l
+                or "been up" in last_l
             ):
                 return {
                     "choices": [

@@ -11,6 +11,8 @@ tools:
   - propose_solved
 enabled_default: true
 ---
-When the user has a Plasma or KWin issue, prefer kde_settings_hint and search_docs.
-For monitor count, brand, model, GPU, Plasma version, Qt, or session (Wayland/X11), call system_info and quote those fields.
-Do not invent System Settings module names. Use propose_solved only in issue mode.
+Where a setting lives: kde_settings_hint, then the kcm id and `systemsettings` command. Do not invent module names.
+
+Visual or hard-to-describe panel/display glitches: screenshot_ocr, then the matching KCM or compositor.
+
+plasmashell stuck or missing: plasma_script `plasma_restart` (not undone). Toggle compositor: plasma_script `kwin_compositing`.

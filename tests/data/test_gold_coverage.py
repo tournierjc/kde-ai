@@ -82,3 +82,31 @@ def test_gold_present_and_coverage():
     assert rag >= 5
     assert refuse >= 5
     assert narrow >= 3
+
+
+def test_gold_bakes_repo_playbooks_not_tool_contracts():
+    """Gold must follow repo skills/, not a stale ~/.local install copy."""
+    banned = ("quote those fields", "come from system_info", "quote uptime")
+    for rec in _rows():
+        sys_msg = (rec.get("messages") or [{}])[0].get("content") or ""
+        for needle in banned:
+            assert needle not in sys_msg, f"{rec.get('id')} still has {needle!r}"
+
+
+def test_gold_expert_stems_are_diverse():
+    import re
+
+    stems = set()
+    expert = 0
+    for rec in _rows():
+        rid = rec.get("id") or ""
+        if rid.startswith("gold-expert-"):
+            expert += 1
+        for m in rec.get("messages") or []:
+            if m.get("role") != "user":
+                continue
+            q = m.get("content") or ""
+            stem = re.sub(r"\s*[\(\[]\d+[\)\]]\s*$", "", q).strip()
+            stems.add(stem)
+    assert expert >= 60
+    assert len(stems) >= 80

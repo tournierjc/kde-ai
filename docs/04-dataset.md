@@ -33,6 +33,14 @@ DPO 200: 80 call-vs-no-call, 60 propose-vs-not, 60 privilege-cancel-vs-proceed.
 
 Every record uses the shipped `system.txt` plus the skill ids in `meta.skills`.
 
+## Skills vs training
+
+Skills (`skills/*/SKILL.md`, copied into the package as `shipped_skills/`) are optional **domain playbooks**: how to hunt a KCM, how to query pacman on CachyOS, Bugzilla-then-invent order, RAG-first docs. Frontmatter `tools:` subsets the daemon allowlist. Several enabled skills **union** those lists (still cannot add unknown tools).
+
+The GGUF learns the **tool contract** from gold + `system.txt` + tool schemas: which tool to call, which JSON fields to quote, when to refuse, when `propose_solved` is legal. Do not put “call system_info and quote gpu/ram/uptime” in a skill — add a gold trajectory instead.
+
+Gold and the 30k templates (`data/generators/expert.py`) also teach **domain expertise** inside the existing mix slices: Linux engineering (cgroups, capabilities, journal/dmesg), KDE user + dev (KCMs, KWin/Wayland, invent/Bugzilla), CachyOS (kernels, NVIDIA, pacman, Limine), sysadmin (systemd user vs system, units, fstab), and network admin (NetworkManager, ip/ss/nft/resolvectl *via man citations* — those CLIs are not allowlisted tools).
+
 Gold coverage (enforced by `tests/data/test_gold_coverage.py`):
 
 - ≥ 1 trajectory per tool

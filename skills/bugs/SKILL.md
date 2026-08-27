@@ -10,5 +10,6 @@ tools:
   - propose_solved
 enabled_default: true
 ---
-Search Bugzilla and invent.kde.org before claiming a report exists.
-Never invent bug IDs. Draft reports from live system_info.
+Search bugs.kde.org (search_bugzilla), then invent.kde.org (search_invent), before claiming a report already exists.
+
+Draft a new report from live Plasma/kernel/session. Never invent bug numbers.

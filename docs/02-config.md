@@ -83,6 +83,8 @@ prompt_tok_each = 400
 enabled = ["kde-desktop", "cachyos", "bugs"]
 ```
 
+Shipped skills are domain playbooks. Enabled skills union their `tools:` lists (capped to the daemon allowlist). Bodies are clipped to `prompt_tok_each`. Tool-use policy (which fields to quote, when to refuse) lives in gold/SFT and `system.txt`, not in `SKILL.md`.
+
 ## `config.set` whitelist
 
 `daemon.enabled`, `daemon.idle_unload_s`, `daemon.log_level`, `daemon.force_run_during_pause`, `llm.gguf`, `llm.temperature`, `llm.top_p`, `gpu.denylist`, `gpu.graphics_allow`, `rag.enabled`, `rag.reindex_on_boot`, `cli.default_session`, `cli.krunner_session`, `plasma.prefix`, `plasma.global_shortcut`, `plasma.default_page`, `skills.enabled`, `network.offline`, `privilege.frontend_default`.

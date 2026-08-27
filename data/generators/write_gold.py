@@ -13,6 +13,7 @@ from data.generators.common import (
     tool,
     user,
 )
+from data.generators.expert import MAN, all_expert_cases, record_from_case
 
 REPO = Path(__file__).resolve().parents[2]
 GOLD = REPO / "data" / "gold"
@@ -28,16 +29,6 @@ READONLY = [
 ]
 PRIV = ["id", "systemctl_status_unit", "journalctl_system_n", "dmesg"]
 PLASMA = ["kwin_compositing", "plasma_restart", "notify_test"]
-MAN = [
-    ("ls", "1", "/usr/share/man/man1/ls.1"),
-    ("pacman", "8", "/usr/share/man/man8/pacman.8"),
-    ("journalctl", "1", "/usr/share/man/man1/journalctl.1"),
-    ("systemctl", "1", "/usr/share/man/man1/systemctl.1"),
-    ("kwin_wayland", "1", "/usr/share/man/man1/kwin_wayland.1"),
-    ("man", "1", "/usr/share/man/man1/man.1"),
-    ("uname", "1", "/usr/share/man/man1/uname.1"),
-    ("dmesg", "1", "/usr/share/man/man1/dmesg.1"),
-]
 
 
 def _tool_traj(rid: str, name: str, args: dict, result: dict, question: str, answer: str, domain="tools", skills=None, issue=False, tags=None):
@@ -182,6 +173,9 @@ def gold_records() -> list[dict]:
         "qt": "6.11.2",
         "board": "MPG X570 GAMING PRO CARBON WIFI (MS-7B93)",
         "board_vendor": "Micro-Star International Co., Ltd.",
+        "uptime": "2 days, 3 hours, 14 minutes",
+        "uptime_seconds": 184440,
+        "boot_time": "2026-08-25 19:19",
     }
     add(
         _tool_traj(
@@ -231,6 +225,16 @@ def gold_records() -> list[dict]:
             hw_machine,
             "Am I on Wayland or X11?",
             "wayland.",
+        )
+    )
+    add(
+        _tool_traj(
+            "gold-system_info-hw-uptime",
+            "system_info",
+            {},
+            hw_machine,
+            "how long my computer has been up",
+            "Up 2 days, 3 hours, 14 minutes (since 2026-08-25 19:19).",
         )
     )
     for i, name in enumerate(READONLY):
@@ -622,95 +626,13 @@ def gold_records() -> list[dict]:
             )
         )
 
-    # pad kde / cachyos / bugs / tools to ≥400
-    kde_qs = [
-        "Why is my panel on the wrong screen?",
-        "Night color is stuck",
-        "Global theme reset after update",
-        "Task manager icons vanished",
-        "Wayland vs X11 session",
-        "KRunner prefix for the agent",
-        "Notifications history empty",
-        "Scale 200% looks blurry",
-    ]
-    for i, q in enumerate(kde_qs * 6):
-        add(
-            record(
-                f"gold-kde-pad-{i}",
-                "kde",
-                False,
-                ["kde-desktop", "docs"],
-                [
-                    user(q + f" [{i}]"),
-                    assistant_tools([call("kde_settings_hint", {"query": q.split()[0].lower()})]),
-                    tool("kde_settings_hint", {"ok": True, "kcm": "kcm_kscreen", "command": "systemsettings kcm_kscreen", "doc": "https://userbase.kde.org/System_Settings/Display"}),
-                    assistant_text("Check the matching System Settings module; I mapped it via kde_settings_hint."),
-                ],
-                tags=["tool:kde_settings_hint"],
-            )
-        )
-    for i in range(40):
-        add(
-            record(
-                f"gold-cachyos-pad-{i}",
-                "cachyos",
-                False,
-                ["cachyos"],
-                [
-                    user(f"Query package linux-cachyos ({i})."),
-                    assistant_tools([call("run_readonly_cmd", {"name": "pacman_qi", "pkg": "linux-cachyos"})]),
-                    tool("run_readonly_cmd", {"ok": True, "stdout": "Name : linux-cachyos", "code": 0}),
-                    assistant_text("linux-cachyos is installed according to pacman -Qi."),
-                ],
-                tags=["tool:run_readonly_cmd"],
-            )
-        )
-    for i in range(30):
-        add(
-            record(
-                f"gold-bugs-pad-{i}",
-                "bug_search",
-                False,
-                ["bugs", "kde-desktop"],
-                [
-                    user(f"Find reports about plasmashell memory leak ({i})."),
-                    assistant_tools([call("system_info", {})]),
-                    tool("system_info", {"ok": True, "plasma": "6.3.0"}),
-                    assistant_tools([call("search_bugzilla", {"query": "plasmashell memory leak"})]),
-                    tool("search_bugzilla", {"ok": True, "bugs": [{"id": 480000 + (i % 50), "summary": "leak", "status": "REPORTED", "url": f"https://bugs.kde.org/show_bug.cgi?id={480000 + (i % 50)}"}]}),
-                    assistant_text("I searched Bugzilla after reading system_info. Draft a report from live data; do not invent ids."),
-                ],
-                tags=["tool:system_info", "tool:search_bugzilla"],
-            )
-        )
-    # extra tools-domain singles
-    for i in range(20):
-        add(
-            _tool_traj(
-                f"gold-tools-pad-{i}",
-                "system_info",
-                {},
-                {"ok": True, "hostname": "cachy", "user": "dev"},
-                f"Hostname and user please ({i}).",
-                "Hostname cachy, user dev.",
-            )
-        )
-    for i in range(180):
-        add(
-            record(
-                f"gold-fill-{i}",
-                "tools",
-                False,
-                ["kde-desktop", "cachyos", "bugs"],
-                [
-                    user(f"Quick live check #{i} — Plasma version via tools."),
-                    assistant_tools([call("system_info", {})]),
-                    tool("system_info", {"ok": True, "plasma": "6.3.0"}),
-                    assistant_text("Plasma 6.3.0 from system_info."),
-                ],
-                tags=["tool:system_info"],
-            )
-        )
+    # --- expert Linux / KDE / CachyOS / sysadmin / network (unique, then fill) ---
+    experts = all_expert_cases()
+    for i, spec in enumerate(experts):
+        add(record_from_case(f"gold-expert-{spec['domain']}-{i}", spec))
+    for j in range(220):
+        spec = experts[j % len(experts)]
+        add(record_from_case(f"gold-expert-fill-{j}", spec, suffix=f" [{j}]"))
     return rows
 
 

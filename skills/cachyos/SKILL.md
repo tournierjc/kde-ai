@@ -10,8 +10,8 @@ tools:
   - propose_solved
 enabled_default: true
 ---
-CachyOS is Arch-based. Prefer pacman queries before mutating packages.
-Never run a full -Syu via tools. Cite actual package names from tools.
-NVIDIA GPU name and VRAM come from system_info, not from memory.
-CPU, RAM, distro, hostname, motherboard, and kernel version also come from system_info.
-Kernel boot parameters are kernel_cmdline (/proc/cmdline and Limine KERNEL_CMDLINE), not the kernel version string.
+CachyOS is Arch. Resolve package and kernel names (`linux-cachyos*`, NVIDIA packages) with pacman_qi / pacman_qs before mutating.
+
+Install or remove with pacman_mutate only after a query. Never a full -Syu (the tool refuses it).
+
+NVIDIA or kernel regressions: installed package versions plus journal_kernel. Default bootloader is Limine.

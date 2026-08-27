@@ -9,4 +9,4 @@ These are hard product locks. Implementation and skills must not regress them.
 - Unrestricted shell (`sh -c` with model-supplied string)
 - Editing `~/.ssh`, `~/.gnupg`, `~/.pki`, `/etc/sudoers*`
 - Force-push, `--no-verify`, or skipping polkit “for convenience”
-- User skills that add privileged argv or disable allowlists (skills may only **subset** existing tools)
+- User skills that add privileged argv or disable allowlists (skills may only **subset** existing tools; enabling several skills unions those subsets)

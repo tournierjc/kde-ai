@@ -594,8 +594,8 @@ def main() -> None:
     form.addRow("GPU yield", force)
     form.addRow("Idle unload", idle)
     shortcut = QKeySequenceEdit()
-    shortcut.setAccessibleName("Open window shortcut")
-    form.addRow("Open window", shortcut)
+    shortcut.setAccessibleName("Toggle window shortcut")
+    form.addRow("Toggle window", shortcut)
     cfl.addLayout(form)
     cfl.addWidget(_heading("GPU"))
     gpu_help = QLabel(

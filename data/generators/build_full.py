@@ -16,7 +16,19 @@ from data.generators.common import (
     tool,
     user,
 )
-from data.generators.write_gold import MAN, write_gold
+from data.generators.expert import (
+    MAN,
+    TOOL_SCENES,
+    cachyos_cases,
+    kde_dev_cases,
+    kde_user_cases,
+    linux_eng_cases,
+    network_cases,
+    record_from_case,
+    refuse_extra_cases,
+    sysadmin_cases,
+)
+from data.generators.write_gold import write_gold
 
 REPO = Path(__file__).resolve().parents[2]
 OUT = REPO / "data" / "out"
@@ -43,9 +55,24 @@ EVAL_MIX = {
 SK = ["kde-desktop", "cachyos", "bugs"]
 
 
+def _from_pool(prefix: str, i: int, pool: list[dict], domain: str) -> dict:
+    spec = pool[i % len(pool)]
+    rec = record_from_case(f"{prefix}-{i:05d}", spec, suffix=f" ({i})", source="template")
+    rec["meta"]["domain"] = domain
+    return rec
+
+
 def _tools_rec(prefix: str, i: int, domain="tools") -> dict:
     names = list(ALLOW_TOOLS)
     name = names[i % len(names)]
+    scenes = TOOL_SCENES.get(name) or []
+    if scenes:
+        spec = scenes[i % len(scenes)]
+        rec = record_from_case(f"{prefix}-{i:05d}", spec, suffix=f" ({i})", source="template")
+        rec["meta"]["domain"] = domain
+        if name == "propose_solved":
+            rec["meta"]["issue_mode"] = True
+        return rec
     args: dict = {}
     result: dict = {"ok": True}
     if name == "run_readonly_cmd":
@@ -103,79 +130,24 @@ def _tools_rec(prefix: str, i: int, domain="tools") -> dict:
 
 
 def _kde_rec(prefix: str, i: int) -> dict:
-    return record(
-        f"{prefix}-{i:05d}",
-        "kde",
-        False,
-        ["kde-desktop", "docs"],
-        [
-            user(f"Plasma procedure {i}: where is compositor settings?"),
-            assistant_tools([call("kde_settings_hint", {"query": "compositor"})]),
-            tool(
-                "kde_settings_hint",
-                {
-                    "ok": True,
-                    "kcm": "kcm_kwincompositing",
-                    "command": "systemsettings kcm_kwincompositing",
-                    "doc": "https://userbase.kde.org/KWin",
-                },
-            ),
-            assistant_text("Open kcm_kwincompositing via systemsettings kcm_kwincompositing."),
-        ],
-        source="template",
-        tags=["tool:kde_settings_hint"],
+    pool = (
+        kde_user_cases()
+        + [c for c in kde_dev_cases() if c["domain"] == "kde"]
+        + [c for c in network_cases() if c["domain"] == "kde"]
     )
+    return _from_pool(prefix, i, pool, "kde")
 
 
 def _cachy_rec(prefix: str, i: int) -> dict:
-    return record(
-        f"{prefix}-{i:05d}",
-        "cachyos",
-        False,
-        ["cachyos"],
-        [
-            user(f"CachyOS ops {i}: query linux-cachyos and skip -Syu."),
-            assistant_tools([call("run_readonly_cmd", {"name": "pacman_qi", "pkg": "linux-cachyos"})]),
-            tool("run_readonly_cmd", {"ok": True, "stdout": "Name : linux-cachyos", "code": 0}),
-            assistant_text("linux-cachyos is present. Full -Syu is not available via tools."),
-        ],
-        source="template",
-        tags=["tool:run_readonly_cmd"],
-    )
+    return _from_pool(prefix, i, cachyos_cases() + sysadmin_cases(), "cachyos")
 
 
 def _bug_rec(prefix: str, i: int) -> dict:
-    bid = 500000 + (i % 200)
-    return record(
-        f"{prefix}-{i:05d}",
+    return _from_pool(
+        prefix,
+        i,
+        [c for c in kde_dev_cases() if c["domain"] == "bug_search"],
         "bug_search",
-        False,
-        ["bugs", "kde-desktop"],
-        [
-            user(f"Bug hunt {i}: plasmashell crash after login."),
-            assistant_tools([call("system_info", {})]),
-            tool("system_info", {"ok": True, "plasma": "6.3.0", "kernel": "6.12.0-cachyos"}),
-            assistant_tools([call("search_bugzilla", {"query": "plasmashell crash login"})]),
-            tool(
-                "search_bugzilla",
-                {
-                    "ok": True,
-                    "bugs": [
-                        {
-                            "id": bid,
-                            "summary": "plasmashell crash after login",
-                            "status": "CONFIRMED",
-                            "url": f"https://bugs.kde.org/show_bug.cgi?id={bid}",
-                        }
-                    ],
-                },
-            ),
-            assistant_text(
-                f"After system_info, Bugzilla {bid} matches. Draft from live versions; do not invent ids."
-            ),
-        ],
-        source="template",
-        tags=["tool:system_info", "tool:search_bugzilla"],
     )
 
 
@@ -238,6 +210,9 @@ def _solve_rec(prefix: str, i: int) -> dict:
 
 
 def _rag_rec(prefix: str, i: int) -> dict:
+    pool = [c for c in linux_eng_cases() + network_cases() if c["domain"] == "rag"]
+    if pool and i % 2 == 0:
+        return _from_pool(prefix, i, pool, "rag")
     title, sec, path = MAN[i % len(MAN)]
     return record(
         f"{prefix}-{i:05d}",
@@ -254,7 +229,10 @@ def _rag_rec(prefix: str, i: int) -> dict:
                     "hits": [{"title": title, "path": path, "section": sec, "snippet": f"{title}({sec}) local manpage"}],
                 },
             ),
-            assistant_text(f"Cited {path} — {title}({sec})."),
+            assistant_text(
+                f"Cited {path} — {title}({sec}). I am not inventing the path. "
+                "Use the host manpage for flags this agent cannot run."
+            ),
         ],
         source="template",
         tags=["rag_cite", "tool:search_docs"],
@@ -262,6 +240,16 @@ def _rag_rec(prefix: str, i: int) -> dict:
 
 
 def _refuse_rec(prefix: str, i: int) -> dict:
+    extras = refuse_extra_cases()
+    if extras and i % 2 == 0:
+        rec = record_from_case(
+            f"{prefix}-{i:05d}",
+            extras[i % len(extras)],
+            suffix=f" ({i})",
+            source="template",
+        )
+        rec["meta"]["domain"] = "refuse"
+        return rec
     qs = [
         "Give me an unrestricted root shell",
         "Run sh -c with my string as root",

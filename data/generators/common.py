@@ -32,10 +32,10 @@ def system_for(skills: tuple[str, ...]) -> str:
     if str(src) not in sys.path:
         sys.path.insert(0, str(src))
     from kde_ai.prompting import clip_tokens, load_system_prompt
-    from kde_ai.skills import load_all_skills
+    from kde_ai.skills import load_skills_from
 
     text = load_system_prompt("en_US")
-    allsk = load_all_skills()
+    allsk = load_skills_from(REPO / "skills")
     bodies = []
     for sid in skills:
         sk = allsk.get(sid)

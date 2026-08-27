@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 from kde_ai.tools.system_info import (
@@ -312,6 +313,23 @@ def test_collect_cpu_and_ram(tmp_path: Path):
     assert collect_ram(meminfo)["ram_mb"] == 32771268 // 1024
 
 
+def test_collect_uptime(tmp_path: Path):
+    from kde_ai.tools.system_info import collect_uptime, format_uptime
+
+    assert format_uptime(0) == "0 seconds"
+    assert format_uptime(45) == "45 seconds"
+    assert format_uptime(60) == "1 minute"
+    assert format_uptime(3661) == "1 hour, 1 minute"
+    assert format_uptime(184440) == "2 days, 3 hours, 14 minutes"
+    proc = tmp_path / "uptime"
+    proc.write_text("184440.12 99999.0\n", encoding="utf-8")
+    now = 1_000_000_000.0
+    got = collect_uptime(uptime_path=proc, now=now)
+    assert got["uptime"] == "2 days, 3 hours, 14 minutes"
+    assert got["uptime_seconds"] == 184440
+    assert got["boot_time"] == time.strftime("%Y-%m-%d %H:%M", time.localtime(now - 184440.12))
+
+
 def test_is_hardware_question_covers_linux_facts():
     from kde_ai.tools.system_info import is_hardware_question
 
@@ -324,11 +342,17 @@ def test_is_hardware_question_covers_linux_facts():
     assert is_hardware_question("What is my hostname?")
     assert is_hardware_question("What motherboard do I have?")
     assert is_hardware_question("What Qt version?")
+    assert is_hardware_question("how long my computer has been up")
+    assert is_hardware_question("What's my uptime?")
+    assert is_hardware_question("when did I last boot?")
     assert not is_hardware_question("How do I restart plasmashell?")
+    assert not is_hardware_question("How long does Plasma take to start up?")
     from kde_ai.tools.system_info import is_hardware_lookup
 
     assert is_hardware_lookup("What Qt version?")
     assert is_hardware_lookup("How much RAM do I have?")
+    assert is_hardware_lookup("how long my computer has been up")
+    assert is_hardware_lookup("uptime")
     assert not is_hardware_lookup("My GPU driver crashes after login")
 
 
@@ -351,6 +375,9 @@ FULL_HW = {
     "cpu_cores": 12,
     "cpu_threads": 24,
     "ram_mb": 31999,
+    "uptime": "2 days, 3 hours, 14 minutes",
+    "uptime_seconds": 184440,
+    "boot_time": "2026-08-25 19:19",
     "hostname": "jct-desktop",
     "board": "MPG X570 GAMING PRO CARBON WIFI (MS-7B93)",
     "board_vendor": "Micro-Star International Co., Ltd.",
@@ -384,6 +411,16 @@ def test_prefer_hardware_reply_linux_and_machine_facts():
     assert "6.11.2" in prefer_hardware_reply("What Qt version?", "Qt 5.15", p)
     board = prefer_hardware_reply("What motherboard do I have?", "ASUS unknown", p)
     assert "X570" in board or "7B93" in board
+    dump = (
+        "2 monitors, NVIDIA GeForce RTX 3090 (24576 MiB), AMD Ryzen 9 5900X, "
+        "31 GiB RAM, CachyOS, plasmashell 6.7.4, wayland session, 7.2.0-1-cachyos kernel."
+    )
+    uptime = prefer_hardware_reply("how long my computer has been up", dump, p)
+    assert "2 days, 3 hours, 14 minutes" in uptime
+    assert "since 2026-08-25 19:19" in uptime
+    assert "RTX 3090" not in uptime
+    assert "monitor" not in uptime.lower()
+    assert prefer_hardware_reply("How many monitors?", "I am not sure.", p).lower().count("up ") == 0
 
 
 def test_handle_includes_cpu_ram_distro(monkeypatch):
@@ -411,13 +448,25 @@ def test_handle_includes_cpu_ram_distro(monkeypatch):
             "board": "MPG X570 GAMING PRO CARBON WIFI (MS-7B93)",
         },
     )
+    monkeypatch.setattr(
+        mod,
+        "collect_uptime",
+        lambda uptime_path=None, now=None: {
+            "uptime_seconds": 184440,
+            "uptime": "2 days, 3 hours, 14 minutes",
+            "boot_time": "2026-08-25 19:19",
+        },
+    )
     payload = handle({}, None)
     assert payload["cpu"].startswith("AMD Ryzen 9 5900X")
     assert payload["ram_mb"] == 31999
     assert payload["distro"] == "CachyOS"
+    assert payload["uptime"] == "2 days, 3 hours, 14 minutes"
+    assert payload["boot_time"] == "2026-08-25 19:19"
     assert "5900X" in payload["summary"]
     assert "31 GiB" in payload["summary"]
     assert "CachyOS" in payload["summary"]
+    assert "up 2 days, 3 hours, 14 minutes" in payload["summary"]
 
 
 EDID_ACER = bytes.fromhex(

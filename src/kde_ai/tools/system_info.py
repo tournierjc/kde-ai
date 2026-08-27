@@ -4,6 +4,7 @@ import json
 import os
 import platform
 import re
+import time
 from pathlib import Path
 
 from kde_ai.tools import run_argv
@@ -151,6 +152,42 @@ def collect_ram(meminfo_path: Path | None = None) -> dict:
         except (IndexError, ValueError):
             break
     return {"ram_mb": 0}
+
+
+def format_uptime(seconds: float) -> str:
+    total = max(0, int(seconds))
+    days, rem = divmod(total, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes, secs = divmod(rem, 60)
+    parts: list[str] = []
+    if days:
+        parts.append(f"{days} day{'s' if days != 1 else ''}")
+    if hours:
+        parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+    if minutes:
+        parts.append(f"{minutes} minute{'s' if minutes != 1 else ''}")
+    if not parts:
+        parts.append(f"{secs} second{'s' if secs != 1 else ''}")
+    return ", ".join(parts)
+
+
+def collect_uptime(uptime_path: Path | None = None, now: float | None = None) -> dict:
+    raw = _read_text(uptime_path or Path("/proc/uptime")).strip()
+    seconds = 0.0
+    if raw:
+        try:
+            seconds = float(raw.split()[0])
+        except (IndexError, ValueError):
+            seconds = 0.0
+    boot_time = ""
+    if seconds > 0:
+        ts = (now if now is not None else time.time()) - seconds
+        boot_time = time.strftime("%Y-%m-%d %H:%M", time.localtime(ts))
+    return {
+        "uptime_seconds": int(seconds),
+        "uptime": format_uptime(seconds),
+        "boot_time": boot_time,
+    }
 
 
 def collect_board(
@@ -650,6 +687,7 @@ def _summary(
     ram_mb: int = 0,
     distro: str = "",
     kernel: str = "",
+    uptime: str = "",
 ) -> str:
     parts: list[str] = []
     if monitors:
@@ -674,6 +712,8 @@ def _summary(
         parts.append(f"CPU {cpu_bits}")
     if ram_mb:
         parts.append(f"RAM {ram_mb // 1024} GiB")
+    if uptime:
+        parts.append(f"up {uptime}")
     if distro:
         parts.append(distro)
     if kernel:
@@ -695,6 +735,7 @@ def handle(_args: dict, ctx) -> dict:
     boot = collect_kernel_cmdline()
     cpu = collect_cpu()
     ram = collect_ram()
+    up = collect_uptime()
     board = collect_board()
     os_release = _os_release()
     distro = _distro_name(os_release)
@@ -703,6 +744,9 @@ def handle(_args: dict, ctx) -> dict:
     cpu_cores = int(cpu.get("cpu_cores") or 0)
     cpu_threads = int(cpu.get("cpu_threads") or 0)
     ram_mb = int(ram.get("ram_mb") or 0)
+    uptime = up.get("uptime") or ""
+    uptime_seconds = int(up.get("uptime_seconds") or 0)
+    boot_time = up.get("boot_time") or ""
     return {
         "ok": True,
         "summary": _summary(
@@ -716,6 +760,7 @@ def handle(_args: dict, ctx) -> dict:
             ram_mb=ram_mb,
             distro=distro,
             kernel=kernel,
+            uptime=uptime,
         ),
         "gpu": gpu,
         "gpus": gpus,
@@ -725,6 +770,9 @@ def handle(_args: dict, ctx) -> dict:
         "cpu_cores": cpu_cores,
         "cpu_threads": cpu_threads,
         "ram_mb": ram_mb,
+        "uptime": uptime,
+        "uptime_seconds": uptime_seconds,
+        "boot_time": boot_time,
         "distro": distro,
         "plasma": plasma,
         "qt": _qt_version(),
@@ -772,6 +820,18 @@ _HW_HOST_RE = re.compile(r"\bhostname\b|machine name|nom d['’]hôte", re.I)
 _HW_SESSION_RE = re.compile(r"\bwayland\b|\bx11\b|session type|display server", re.I)
 _HW_QT_RE = re.compile(r"\bqt(?:\s+version)?\b", re.I)
 _HW_BOARD_RE = re.compile(r"motherboard|mainboard|carte mère", re.I)
+_HW_UPTIME_RE = re.compile(
+    r"\buptime\b|"
+    r"\bbeen\s+up\b|"
+    r"how long .{0,80}(?:computer|machine|pc|system|box|host).{0,40}\b(?:up|on|running)\b|"
+    r"time since (?:(?:the\s+)?(?:last\s+)?)?(?:boot|reboot|startup)|"
+    r"since (?:I\s+)?(?:last\s+)?(?:boot(?:ed)?|reboot(?:ed)?)\b|"
+    r"when (?:did|was) .{0,40}\b(?:boot(?:ed)?|rebooted)\b|"
+    r"\bboot time\b|"
+    r"depuis (?:quand|combien de temps).{0,40}(?:allumé|démarré)|"
+    r"temps de fonctionnement",
+    re.I,
+)
 _HW_ANY_RE = (
     _HW_GPU_RE,
     _HW_MON_RE,
@@ -785,6 +845,7 @@ _HW_ANY_RE = (
     _HW_SESSION_RE,
     _HW_QT_RE,
     _HW_BOARD_RE,
+    _HW_UPTIME_RE,
 )
 
 
@@ -813,7 +874,12 @@ _HW_LOOKUP_RE = re.compile(
 
 
 def is_hardware_lookup(text: str, history: list | None = None) -> bool:
-    return is_hardware_question(text, history) and bool(_HW_LOOKUP_RE.search(text or ""))
+    if not is_hardware_question(text, history):
+        return False
+    blob = text or ""
+    if _HW_UPTIME_RE.search(blob):
+        return True
+    return bool(_HW_LOOKUP_RE.search(blob))
 
 
 def _brand_answer(payload: dict) -> str:
@@ -899,6 +965,16 @@ def _board_answer(payload: dict) -> str:
     return f"Motherboard: {ident}." if ident else ""
 
 
+def _uptime_answer(payload: dict) -> str:
+    human = (payload.get("uptime") or "").strip()
+    boot = (payload.get("boot_time") or "").strip()
+    if not human:
+        return ""
+    if boot:
+        return f"Up {human} (since {boot})."
+    return f"Up {human}."
+
+
 def prefer_hardware_reply(
     user_text: str,
     model_text: str,
@@ -922,6 +998,7 @@ def prefer_hardware_reply(
     wants_session = bool(_HW_SESSION_RE.search(q))
     wants_qt = bool(_HW_QT_RE.search(q))
     wants_board = bool(_HW_BOARD_RE.search(q))
+    wants_uptime = bool(_HW_UPTIME_RE.search(q))
     if wants_brand and not wants_mon and _HW_MON_RE.search(_history_blob(history)):
         wants_mon = True
     wants_count = bool(_HW_COUNT_RE.search(q)) and wants_mon
@@ -948,6 +1025,7 @@ def prefer_hardware_reply(
             wants_session,
             wants_qt,
             wants_board,
+            wants_uptime,
         )
     )
     if not any_hw:
@@ -1036,6 +1114,29 @@ def prefer_hardware_reply(
             ans = _board_answer(payload)
             if ans:
                 replacements.append(ans)
+    if wants_uptime:
+        ans = _uptime_answer(payload)
+        others = any(
+            (
+                wants_gpu,
+                wants_mon,
+                wants_brand,
+                wants_count,
+                wants_cmdline,
+                wants_plasma,
+                wants_kernel_ver,
+                wants_distro,
+                wants_cpu,
+                wants_ram,
+                wants_host,
+                wants_session,
+                wants_qt,
+                wants_board,
+            )
+        )
+        human = (payload.get("uptime") or "").strip()
+        if ans and (not others or human.lower() not in blob):
+            replacements.append(ans)
     if not replacements and (model_text or "").strip():
         return model_text
     if replacements:
@@ -1046,11 +1147,10 @@ def prefer_hardware_reply(
 SCHEMA = {
     "name": "system_info",
     "description": (
-        "Live OS, Plasma, Qt, session, GPU, monitors (count/brand/model), CPU, RAM, "
-        "motherboard, hostname, kernel version, and kernel_cmdline (boot parameters from "
-        "/proc/cmdline and Limine/GRUB). Call this for hardware or version questions; quote "
-        "summary, gpu, monitor_count, brand/model, cpu, ram_mb, distro, and kernel_cmdline. "
-        "kernel is the version; kernel_cmdline is the boot parameters."
+        "Live snapshot of this machine: distro, Plasma, Qt, session, GPU, monitors "
+        "(count/brand/model), CPU, RAM, motherboard, hostname, uptime and boot_time, "
+        "kernel (running version), kernel_cmdline (this boot from /proc/cmdline plus "
+        "Limine/GRUB config). Call for hardware, versions, uptime, or boot parameters."
     ),
     "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
 }

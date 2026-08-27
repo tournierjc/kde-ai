@@ -74,19 +74,23 @@ def _parse_skill(path: Path, source: str) -> Skill | None:
     )
 
 
+def load_skills_from(root: Path, source: str = "shipped") -> dict[str, Skill]:
+    found: dict[str, Skill] = {}
+    if not root.is_dir():
+        return found
+    for skill_md in root.glob("*/SKILL.md"):
+        sk = _parse_skill(skill_md, source)
+        if sk:
+            found[sk.id] = sk
+    return found
+
+
 def load_all_skills() -> dict[str, Skill]:
     found: dict[str, Skill] = {}
     for root in shipped_skills_dirs():
-        for skill_md in root.glob("*/SKILL.md"):
-            sk = _parse_skill(skill_md, "shipped")
-            if sk:
-                found[sk.id] = sk
+        found.update(load_skills_from(root, "shipped"))
     usd = user_skills_dir()
-    if usd.is_dir():
-        for skill_md in usd.glob("*/SKILL.md"):
-            sk = _parse_skill(skill_md, "user")
-            if sk:
-                found[sk.id] = sk
+    found.update(load_skills_from(usd, "user"))
     return found
 
 
@@ -104,6 +108,19 @@ def enabled_ids(cfg_enabled: list[str], session_override: dict | None, skills: d
         if len(ids) >= max_n:
             break
     return ids
+
+
+def allowed_tool_names(enabled: list[Skill]) -> list[str] | None:
+    """Union of enabled skill `tools:` lists, still capped to ALL_TOOLS.
+
+    A skill with an empty list does not constrain. No enabled skills, or none
+    that list tools, means None (daemon allowlist / all registered tools).
+    """
+    sets = [set(sk.tools) for sk in enabled if sk.tools]
+    if not sets:
+        return None
+    allowed = set.union(*sets) & ALL_TOOLS
+    return sorted(allowed) if allowed else list(ALL_TOOLS)
 
 
 def install_skill(src: str) -> str:

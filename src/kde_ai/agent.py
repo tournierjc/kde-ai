@@ -17,7 +17,7 @@ from kde_ai.errors import (
 from kde_ai.issue import IssueManager, looks_like_issue
 from kde_ai.logutil import log
 from kde_ai.prompting import approx_tokens, assemble, clip_tokens, load_system_prompt
-from kde_ai.skills import ALL_TOOLS, enabled_ids, load_all_skills
+from kde_ai.skills import allowed_tool_names, enabled_ids, load_all_skills
 from kde_ai.tools import ToolContext, clip
 from kde_ai.tools.registry import HANDLERS, SCHEMAS
 from kde_ai.tools.system_info import handle as system_info_handle
@@ -146,16 +146,12 @@ class Agent:
             int(self.cfg.get("skills.max_enabled_per_session", 3)),
         )
         bodies = []
-        tool_sets = []
+        enabled_skills = []
         for eid in eids:
             sk = skills[eid]
             bodies.append(clip_tokens(sk.body, int(self.cfg.get("skills.prompt_tok_each", 400))))
-            if sk.tools:
-                tool_sets.append(set(sk.tools))
-        allowed = None
-        if tool_sets:
-            allowed = set.intersection(*tool_sets) & ALL_TOOLS
-            allowed = list(allowed) if allowed else list(ALL_TOOLS)
+            enabled_skills.append(sk)
+        allowed = allowed_tool_names(enabled_skills)
         if is_hardware_lookup(message, self.store.working_messages(sid)):
             if allowed is None or "system_info" in allowed:
                 allowed = ["system_info"]

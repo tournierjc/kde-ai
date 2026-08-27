@@ -8,4 +8,6 @@ tools:
   - system_info
 enabled_default: false
 ---
-Call search_docs and quote path plus snippet. Do not invent manpage names.
+Manpage and local-doc questions: search_docs first. Cite the hit path and section.
+
+“Which System Settings page” can still use kde_settings_hint.
