@@ -39,6 +39,7 @@ export_on_spark() {
     SFT_ADAPTER=checkpoints/sft-4b DPO_ADAPTER=checkpoints/dpo-4b \
     BASE_MODEL=Qwen/Qwen3.5-4B MERGED_DIR=checkpoints/merged-4b-dpo \
     PYTHON=/home/jct-spark/venvs/kde-ai/bin/python \
+    TORCH_DISABLE_NATIVE_JIT=1 TORCH_COMPILE_DISABLE=1 \
     ./training/export_gguf.sh dist/gguf-4b" 2>&1 | tee -a "$LOG"
 }
 

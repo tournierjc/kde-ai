@@ -11,6 +11,7 @@ export HF_HOME="${HF_HOME:-/home/jct-spark/.cache/huggingface-kde-ai}"
 export TRANSFORMERS_CACHE="$HF_HOME"
 export TORCH_COMPILE_DISABLE=1
 export TRITON_DISABLE=1
+export TORCH_DISABLE_NATIVE_JIT=1
 
 need_gb="${NEED_GB:-25}"
 avail_kb=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
@@ -34,7 +35,7 @@ tmux has-session -t kde-ai-sft 2>/dev/null && tmux kill-session -t kde-ai-sft ||
 tmux new-session -d -s kde-ai-sft -c "$ROOT" "
 set -e
 export TOKENIZERS_PARALLELISM=false CUDA_VISIBLE_DEVICES=0 HF_HOME='$HF_HOME' TRANSFORMERS_CACHE='$HF_HOME'
-export TORCH_COMPILE_DISABLE=1 TRITON_DISABLE=1
+export TORCH_COMPILE_DISABLE=1 TRITON_DISABLE=1 TORCH_DISABLE_NATIVE_JIT=1
 PY='$PY'
 echo \"=== SFT Qwen3.5-4B start \$(date -Is) ===\" | tee checkpoints/sft-4b/train.log
 \$PY -u training/train_sft.py --config training/configs/sft_qwen35_4b.yaml 2>&1 | tee -a checkpoints/sft-4b/train.log
