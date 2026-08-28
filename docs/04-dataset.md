@@ -14,6 +14,7 @@ Build:
 ```bash
 ./scripts/build_dataset.sh
 ./scripts/build_dataset.sh --gold-only   # laptop unit tests only; not product acceptance
+PYTHONPATH=src:. python -m data.generators.daily_scenarios   # curated bake-off suite
 ```
 
 ## Train mix (30 000)

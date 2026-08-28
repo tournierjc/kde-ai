@@ -387,44 +387,6 @@ def gold_records() -> list[dict]:
             tags=["tool:kde_settings_hint", "tool:screenshot_ocr"],
         )
     )
-    add(
-        record(
-            "gold-kcm-env",
-            "kde",
-            False,
-            ["kde-desktop"],
-            [
-                user("where can i configure environment variable"),
-                assistant_tools([call("kde_settings_hint", {"query": "environment"})]),
-                tool(
-                    "kde_settings_hint",
-                    {"ok": True, "matched": False, "kcm": None, "command": None, "doc": None},
-                ),
-                assistant_tools([call("search_docs", {"query": "environment.d"}, cid="2")]),
-                tool(
-                    "search_docs",
-                    {
-                        "ok": True,
-                        "hits": [
-                            {
-                                "title": "environment.d",
-                                "path": "/usr/share/man/man5/environment.d.5",
-                                "section": "5",
-                                "snippet": "environment.d(5) — per-user and system environment settings",
-                            }
-                        ],
-                    },
-                ),
-                assistant_text(
-                    "Not a System Settings KCM. For the Plasma session use systemd "
-                    "environment.d(5) (`/usr/share/man/man5/environment.d.5`): drop "
-                    "`KEY=value` files in `~/.config/environment.d/`. System-wide is "
-                    "`/etc/environment`. `~/.bashrc` only affects terminals. Log out to apply."
-                ),
-            ],
-            tags=["tool:kde_settings_hint", "tool:search_docs", "rag_cite"],
-        )
-    )
     for i, (title, sec, path) in enumerate(MAN):
         add(
             _tool_traj(
@@ -798,7 +760,7 @@ def gold_records() -> list[dict]:
         add(record_from_case(f"gold-expert-{spec['domain']}-{i}", spec))
     for j in range(220):
         spec = experts[j % len(experts)]
-        add(record_from_case(f"gold-expert-fill-{j}", spec, suffix=f" [{j}]"))
+        add(record_from_case(f"gold-expert-fill-{j}", spec))
     return rows
 
 

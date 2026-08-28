@@ -21,7 +21,6 @@ from kde_ai.skills import allowed_tool_names, enabled_ids, load_all_skills
 from kde_ai.tools import ToolContext, clip
 from kde_ai.tools.registry import HANDLERS, SCHEMAS
 from kde_ai.tools.privileged import is_netfilter_lookup, prefer_netfilter_reply
-from kde_ai.tools.kde_settings import is_display_settings_howto, prefer_display_settings_reply
 from kde_ai.tools.ocr import is_screenshot_request, prefer_screenshot_reply
 from kde_ai.tools.system_info import handle as system_info_handle
 from kde_ai.tools.system_info import is_hardware_lookup, is_hardware_question, prefer_hardware_reply
@@ -157,7 +156,6 @@ class Agent:
         allowed = allowed_tool_names(enabled_skills)
         netfilter_q = is_netfilter_lookup(message)
         screenshot_q = is_screenshot_request(message)
-        display_q = is_display_settings_howto(message)
         if netfilter_q:
             if allowed is None or "run_privileged_cmd" in allowed:
                 allowed = ["run_privileged_cmd"]
@@ -219,7 +217,6 @@ class Agent:
         hw_payload: dict | None = None
         nf_payload: dict | None = None
         ocr_payload: dict | None = None
-        kcm_payload: dict | None = None
         for _ in range(max_rounds + 1):
             if self._cancel:
                 self._finish(stream_id, "cancel")
@@ -301,8 +298,6 @@ class Agent:
                         )
                 if screenshot_q:
                     content = prefer_screenshot_reply(message, content, ocr_payload)
-                elif display_q:
-                    content = prefer_display_settings_reply(message, content, kcm_payload)
                 elif hw_payload:
                     content = prefer_hardware_reply(message, content, hw_payload, working)
                 elif netfilter_q:
@@ -369,8 +364,6 @@ class Agent:
                     hw_payload = result
                 if name == "screenshot_ocr" and isinstance(result, dict):
                     ocr_payload = result
-                if name == "kde_settings_hint" and isinstance(result, dict):
-                    kcm_payload = result
                 if (
                     name == "run_privileged_cmd"
                     and isinstance(arguments, dict)

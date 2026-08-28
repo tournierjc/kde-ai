@@ -28,6 +28,7 @@ from data.generators.expert import (
     refuse_extra_cases,
     sysadmin_cases,
 )
+from data.generators.questions import manpage_howto
 from data.generators.write_gold import write_gold
 
 REPO = Path(__file__).resolve().parents[2]
@@ -57,7 +58,9 @@ SK = ["kde-desktop", "cachyos", "bugs"]
 
 def _from_pool(prefix: str, i: int, pool: list[dict], domain: str) -> dict:
     spec = pool[i % len(pool)]
-    rec = record_from_case(f"{prefix}-{i:05d}", spec, suffix=f" ({i})", source="template")
+    rec = record_from_case(
+        f"{prefix}-{i:05d}", spec, source="template", variant=i // len(pool)
+    )
     rec["meta"]["domain"] = domain
     return rec
 
@@ -68,7 +71,9 @@ def _tools_rec(prefix: str, i: int, domain="tools") -> dict:
     scenes = TOOL_SCENES.get(name) or []
     if scenes:
         spec = scenes[i % len(scenes)]
-        rec = record_from_case(f"{prefix}-{i:05d}", spec, suffix=f" ({i})", source="template")
+        rec = record_from_case(
+            f"{prefix}-{i:05d}", spec, source="template", variant=i // len(scenes)
+        )
         rec["meta"]["domain"] = domain
         if name == "propose_solved":
             rec["meta"]["issue_mode"] = True
@@ -214,13 +219,14 @@ def _rag_rec(prefix: str, i: int) -> dict:
     if pool and i % 2 == 0:
         return _from_pool(prefix, i, pool, "rag")
     title, sec, path = MAN[i % len(MAN)]
+    q, answer = manpage_howto(title, sec, path, i // len(MAN))
     return record(
         f"{prefix}-{i:05d}",
         "rag",
         False,
         ["docs"],
         [
-            user(f"Quote {title}({sec}) from local docs ({i})."),
+            user(q),
             assistant_tools([call("search_docs", {"query": title})]),
             tool(
                 "search_docs",
@@ -229,10 +235,7 @@ def _rag_rec(prefix: str, i: int) -> dict:
                     "hits": [{"title": title, "path": path, "section": sec, "snippet": f"{title}({sec}) local manpage"}],
                 },
             ),
-            assistant_text(
-                f"Cited {path} — {title}({sec}). I am not inventing the path. "
-                "Use the host manpage for flags this agent cannot run."
-            ),
+            assistant_text(answer),
         ],
         source="template",
         tags=["rag_cite", "tool:search_docs"],
@@ -245,8 +248,8 @@ def _refuse_rec(prefix: str, i: int) -> dict:
         rec = record_from_case(
             f"{prefix}-{i:05d}",
             extras[i % len(extras)],
-            suffix=f" ({i})",
             source="template",
+            variant=i // len(extras),
         )
         rec["meta"]["domain"] = "refuse"
         return rec
@@ -263,7 +266,7 @@ def _refuse_rec(prefix: str, i: int) -> dict:
         False,
         ["kde-desktop"],
         [
-            user(qs[i % len(qs)] + f" ({i})"),
+            user(qs[i % len(qs)]),
             assistant_text(
                 "I refuse unrestricted shells, secret storage, and edits under .ssh/.gnupg/.pki. Use allowlisted tools."
             ),

@@ -19,19 +19,8 @@ def ctx(tmp_path):
 
 
 def test_display_settings_howto_and_kcm_match(tmp_path):
-    from kde_ai.tools.kde_settings import (
-        handle,
-        is_display_settings_howto,
-        prefer_display_settings_reply,
-    )
+    from kde_ai.tools.kde_settings import handle
 
-    q = "how can i change my monitor resolution"
-    assert is_display_settings_howto(q)
-    assert is_display_settings_howto("Where is the display scaling setting?")
-    assert not is_display_settings_howto("How many monitors do I have?")
-    assert not is_display_settings_howto("take a screenshot")
-    assert not is_display_settings_howto("where can i configure environment variable")
-    assert not is_display_settings_howto("where can I configure git")
     got = handle({"query": "monitor resolution"}, ctx(tmp_path))
     assert got["ok"] and got.get("matched") is True
     assert got["kcm"] == "kcm_kscreen"
@@ -42,16 +31,6 @@ def test_display_settings_howto_and_kcm_match(tmp_path):
     assert not miss.get("command")
     short = handle({"query": "me"}, ctx(tmp_path))
     assert short.get("matched") is False
-    dump = "The monitors are ASUS MG28U (HDMI-A-1) and Acer XB273K GP (DP-1)."
-    rewritten = prefer_display_settings_reply(q, dump, got)
-    assert "kcm_kscreen" in rewritten
-    assert "Acer" not in rewritten
-    assert "screenshot" not in rewritten.lower()
-    kept = "Use ~/.config/environment.d/ for session env."
-    env_q = "where can i configure environment variable"
-    assert prefer_display_settings_reply(env_q, kept, miss) == kept
-    assert prefer_display_settings_reply(q, dump, None) == dump
-    assert prefer_display_settings_reply(q, dump, miss) == dump
 
 
 def test_screenshot_request_rewrites_false_refusal(monkeypatch, tmp_path):

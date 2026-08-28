@@ -144,11 +144,14 @@ def case(
     *,
     issue: bool = False,
     tags: list[str] | None = None,
+    topics: list[str] | None = None,
+    example: str | None = None,
+    intent: str | None = None,
 ) -> dict:
     auto = [f"tool:{name}" for name, _, _ in steps]
     if any(name == "search_docs" for name, _, _ in steps):
         auto.append("rag_cite")
-    return {
+    row = {
         "domain": domain,
         "skills": skills,
         "q": q,
@@ -157,15 +160,35 @@ def case(
         "issue": issue,
         "tags": tags or auto,
     }
+    if topics:
+        row["topics"] = topics
+    if example:
+        row["example"] = example
+    if intent:
+        row["intent"] = intent
+    return row
 
 
-def record_from_case(rid: str, spec: dict, suffix: str = "", source: str = "gold") -> dict:
-    q = spec["q"] + suffix
+def record_from_case(
+    rid: str,
+    spec: dict,
+    suffix: str = "",
+    source: str = "gold",
+    variant: int | None = None,
+) -> dict:
+    from data.generators.questions import maybe_example_turns, paraphrase_question
+
+    if variant is not None:
+        q = paraphrase_question(spec, variant)
+    else:
+        q = spec["q"] + suffix
     turns: list[dict] = [user(q)]
     for name, args, result in spec["steps"]:
         turns.append(assistant_tools([call(name, args)]))
         turns.append(tool(name, result))
     turns.append(assistant_text(spec["a"]))
+    if variant is not None:
+        turns.extend(maybe_example_turns(spec, variant))
     return record(
         rid,
         spec["domain"],
@@ -211,6 +234,12 @@ def kde_user_cases() -> list[dict]:
             ],
             "Use System Settings Display (kcm_kscreen): `systemsettings kcm_kscreen`. "
             "Pick the output and set Resolution (and refresh) there.",
+            topics=[
+                "change my monitor resolution",
+                "set my screen resolution",
+                "change display resolution",
+            ],
+            intent="howto",
         ),
         case(
             "kde",
@@ -226,6 +255,8 @@ def kde_user_cases() -> list[dict]:
             ],
             "Use System Settings Display (kcm_kscreen): `systemsettings kcm_kscreen`. "
             "Pick the output and set Resolution there.",
+            topics=["set my screen resolution", "change my monitor resolution"],
+            intent="howto",
         ),
         case(
             "kde",
@@ -261,6 +292,18 @@ def kde_user_cases() -> list[dict]:
             "environment.d(5) (`/usr/share/man/man5/environment.d.5`): drop "
             "`KEY=value` files in `~/.config/environment.d/`. System-wide is "
             "`/etc/environment`. `~/.bashrc` only affects terminals. Log out to apply.",
+            topics=[
+                "set an environment variable",
+                "define an env variable",
+                "configure an environment variable",
+                "persist an environment variable for GUI apps",
+                "set a session environment variable for Plasma",
+            ],
+            example=(
+                "Put this in `~/.config/environment.d/99-local.conf`:\n\n"
+                "EDITOR=nvim\n\nThen log out of Plasma."
+            ),
+            intent="howto",
         ),
         case(
             "kde",
