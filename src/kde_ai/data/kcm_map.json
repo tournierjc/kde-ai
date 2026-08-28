@@ -1,5 +1,8 @@
 {
   "display": {"kcm": "kcm_kscreen", "command": "systemsettings kcm_kscreen", "doc": "https://userbase.kde.org/System_Settings/Display"},
+  "resolution": {"kcm": "kcm_kscreen", "command": "systemsettings kcm_kscreen", "doc": "https://userbase.kde.org/System_Settings/Display"},
+  "monitor": {"kcm": "kcm_kscreen", "command": "systemsettings kcm_kscreen", "doc": "https://userbase.kde.org/System_Settings/Display"},
+  "scale": {"kcm": "kcm_kscreen", "command": "systemsettings kcm_kscreen", "doc": "https://userbase.kde.org/System_Settings/Display"},
   "audio": {"kcm": "kcm_pulseaudio", "command": "systemsettings kcm_pulseaudio", "doc": "https://userbase.kde.org/PulseAudio"},
   "network": {"kcm": "kcm_networkmanagement", "command": "systemsettings kcm_networkmanagement", "doc": "https://userbase.kde.org/Plasma/Network"},
   "shortcuts": {"kcm": "kcm_keys", "command": "systemsettings kcm_keys", "doc": "https://userbase.kde.org/System_Settings/Shortcuts"},

@@ -63,7 +63,7 @@ def test_allowed_tools_union_not_intersection(xdg):
     assert "kde_settings_hint" in union
     assert "pacman_mutate" in union
     assert "search_bugzilla" in union
-    assert "run_privileged_cmd" not in union
+    assert "run_privileged_cmd" in union
     assert allowed_tool_names([]) is None
     docs_only = set(allowed_tool_names([skills["docs"]]) or [])
     assert docs_only == set(skills["docs"].tools)

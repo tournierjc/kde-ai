@@ -16,6 +16,7 @@ gold-rag-systemd-networkd
 gold-rag-sysctl
 gold-rag-mount
 gold-rag-fstab
+gold-rag-environment.d
 gold-rag-pacman.conf
 gold-rag-mkinitcpio
 gold-rag-systemd.timer

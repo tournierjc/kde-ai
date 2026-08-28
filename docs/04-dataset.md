@@ -39,7 +39,7 @@ Skills (`skills/*/SKILL.md`, copied into the package as `shipped_skills/`) are o
 
 The GGUF learns the **tool contract** from gold + `system.txt` + tool schemas: which tool to call, which JSON fields to quote, when to refuse, when `propose_solved` is legal. Do not put “call system_info and quote gpu/ram/uptime” in a skill — add a gold trajectory instead.
 
-Gold and the 30k templates (`data/generators/expert.py`) also teach **domain expertise** inside the existing mix slices: Linux engineering (cgroups, capabilities, journal/dmesg), KDE user + dev (KCMs, KWin/Wayland, invent/Bugzilla), CachyOS (kernels, NVIDIA, pacman, Limine), sysadmin (systemd user vs system, units, fstab), and network admin (NetworkManager, ip/ss/nft/resolvectl *via man citations* — those CLIs are not allowlisted tools).
+Gold and the 30k templates (`data/generators/expert.py`) also teach **domain expertise** inside the existing mix slices: Linux engineering (cgroups, capabilities, journal/dmesg), KDE user + dev (KCMs, KWin/Wayland, invent/Bugzilla), CachyOS (kernels, NVIDIA, pacman, Limine), sysadmin (systemd user vs system, units, fstab), and network admin (NetworkManager via KCM; `ip`/`ss`/`resolvectl` via man citations; live nftables via privileged `nft_list_ruleset`). Do not emit unrestricted `sh -c` for those CLIs.
 
 Gold coverage (enforced by `tests/data/test_gold_coverage.py`):
 

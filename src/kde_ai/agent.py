@@ -20,6 +20,9 @@ from kde_ai.prompting import approx_tokens, assemble, clip_tokens, load_system_p
 from kde_ai.skills import allowed_tool_names, enabled_ids, load_all_skills
 from kde_ai.tools import ToolContext, clip
 from kde_ai.tools.registry import HANDLERS, SCHEMAS
+from kde_ai.tools.privileged import is_netfilter_lookup, prefer_netfilter_reply
+from kde_ai.tools.kde_settings import is_display_settings_howto, prefer_display_settings_reply
+from kde_ai.tools.ocr import is_screenshot_request, prefer_screenshot_reply
 from kde_ai.tools.system_info import handle as system_info_handle
 from kde_ai.tools.system_info import is_hardware_lookup, is_hardware_question, prefer_hardware_reply
 
@@ -152,7 +155,16 @@ class Agent:
             bodies.append(clip_tokens(sk.body, int(self.cfg.get("skills.prompt_tok_each", 400))))
             enabled_skills.append(sk)
         allowed = allowed_tool_names(enabled_skills)
-        if is_hardware_lookup(message, self.store.working_messages(sid)):
+        netfilter_q = is_netfilter_lookup(message)
+        screenshot_q = is_screenshot_request(message)
+        display_q = is_display_settings_howto(message)
+        if netfilter_q:
+            if allowed is None or "run_privileged_cmd" in allowed:
+                allowed = ["run_privileged_cmd"]
+        elif screenshot_q:
+            if allowed is None or "screenshot_ocr" in allowed:
+                allowed = ["screenshot_ocr"]
+        elif is_hardware_lookup(message, self.store.working_messages(sid)):
             if allowed is None or "system_info" in allowed:
                 allowed = ["system_info"]
 
@@ -205,6 +217,9 @@ class Agent:
         max_rounds = int(self.cfg.get("llm.max_tool_rounds", 6))
         final_text = ""
         hw_payload: dict | None = None
+        nf_payload: dict | None = None
+        ocr_payload: dict | None = None
+        kcm_payload: dict | None = None
         for _ in range(max_rounds + 1):
             if self._cancel:
                 self._finish(stream_id, "cancel")
@@ -222,6 +237,47 @@ class Agent:
             msg = choice.get("message") or {}
             tool_calls = msg.get("tool_calls") or []
             content = msg.get("content") or ""
+            if (
+                netfilter_q
+                and nf_payload is None
+                and (allowed is None or "run_privileged_cmd" in (allowed or []))
+            ):
+                already = False
+                for tc in tool_calls:
+                    fn = tc.get("function") or {}
+                    if fn.get("name") == "run_privileged_cmd" and "nft_list_ruleset" in str(
+                        fn.get("arguments") or ""
+                    ):
+                        already = True
+                        break
+                if not already:
+                    tool_calls = [
+                        {
+                            "id": "nf1",
+                            "type": "function",
+                            "function": {
+                                "name": "run_privileged_cmd",
+                                "arguments": '{"name": "nft_list_ruleset"}',
+                            },
+                        }
+                    ]
+            elif (
+                screenshot_q
+                and ocr_payload is None
+                and (allowed is None or "screenshot_ocr" in (allowed or []))
+            ):
+                already = any(
+                    (tc.get("function") or {}).get("name") == "screenshot_ocr"
+                    for tc in tool_calls
+                )
+                if not already:
+                    tool_calls = [
+                        {
+                            "id": "ocr1",
+                            "type": "function",
+                            "function": {"name": "screenshot_ocr", "arguments": "{}"},
+                        }
+                    ]
             if not tool_calls:
                 if not hw_payload and is_hardware_question(message, working):
                     try:
@@ -243,8 +299,14 @@ class Agent:
                                 "result_preview": preview,
                             },
                         )
-                if hw_payload:
+                if screenshot_q:
+                    content = prefer_screenshot_reply(message, content, ocr_payload)
+                elif display_q:
+                    content = prefer_display_settings_reply(message, content, kcm_payload)
+                elif hw_payload:
                     content = prefer_hardware_reply(message, content, hw_payload, working)
+                elif netfilter_q:
+                    content = prefer_netfilter_reply(message, content, nf_payload)
                 if content:
                     self.notify("stream.token", {"stream_id": stream_id, "text": content})
                     final_text += content
@@ -305,6 +367,17 @@ class Agent:
                 self.store.append_turn(sid, tool_msg)
                 if name == "system_info" and isinstance(result, dict) and result.get("ok"):
                     hw_payload = result
+                if name == "screenshot_ocr" and isinstance(result, dict):
+                    ocr_payload = result
+                if name == "kde_settings_hint" and isinstance(result, dict):
+                    kcm_payload = result
+                if (
+                    name == "run_privileged_cmd"
+                    and isinstance(arguments, dict)
+                    and arguments.get("name") == "nft_list_ruleset"
+                    and isinstance(result, dict)
+                ):
+                    nf_payload = result
                 if name == "search_docs" and result.get("hits"):
                     rag_bits.extend(
                         f"{h.get('path')}: {h.get('snippet')}" for h in result["hits"][:5]

@@ -28,6 +28,7 @@ MAN = [
     ("sysctl", "8", "/usr/share/man/man8/sysctl.8"),
     ("mount", "8", "/usr/share/man/man8/mount.8"),
     ("fstab", "5", "/usr/share/man/man5/fstab.5"),
+    ("environment.d", "5", "/usr/share/man/man5/environment.d.5"),
     ("pacman.conf", "5", "/usr/share/man/man5/pacman.conf.5"),
     ("mkinitcpio", "8", "/usr/share/man/man8/mkinitcpio.8"),
     ("systemd.timer", "5", "/usr/share/man/man5/systemd.timer.5"),
@@ -49,6 +50,15 @@ HW = {
     "cpu_cores": 12,
     "ram_mb": 31999,
     "gpu": "NVIDIA GeForce RTX 3090 (24576 MiB, driver 610.57)",
+    "gpus": [
+        {
+            "name": "NVIDIA GeForce RTX 3090",
+            "vram_mb": 24576,
+            "driver": "610.57",
+            "kernel_driver": "nvidia",
+        }
+    ],
+    "gpu_kernel_driver": "nvidia",
     "uptime": "2 days, 3 hours, 14 minutes",
     "boot_time": "2026-08-25 19:19",
     "kernel_cmdline": "quiet nowatchdog splash nvidia_drm.modeset=1 nvidia_drm.fbdev=1",
@@ -60,7 +70,15 @@ def _hint(query: str, kcm: str, cmd: str, doc: str) -> tuple:
     return (
         "kde_settings_hint",
         {"query": query},
-        {"ok": True, "kcm": kcm, "command": cmd, "doc": doc},
+        {"ok": True, "matched": True, "kcm": kcm, "command": cmd, "doc": doc},
+    )
+
+
+def _hint_miss(query: str) -> tuple:
+    return (
+        "kde_settings_hint",
+        {"query": query},
+        {"ok": True, "matched": False, "kcm": None, "command": None, "doc": None},
     )
 
 
@@ -178,6 +196,71 @@ def kde_user_cases() -> list[dict]:
             "You have 2 monitors. Scale and primary display are in kcm_kscreen "
             "(`systemsettings kcm_kscreen`). On Wayland prefer 125–150% over 200% "
             "integer scale so XWayland apps stay sharp.",
+        ),
+        case(
+            "kde",
+            sk,
+            "how can i change my monitor resolution",
+            [
+                _hint(
+                    "display",
+                    "kcm_kscreen",
+                    "systemsettings kcm_kscreen",
+                    "https://userbase.kde.org/System_Settings/Display",
+                )
+            ],
+            "Use System Settings Display (kcm_kscreen): `systemsettings kcm_kscreen`. "
+            "Pick the output and set Resolution (and refresh) there.",
+        ),
+        case(
+            "kde",
+            sk,
+            "how do I set my screen resolution",
+            [
+                _hint(
+                    "resolution",
+                    "kcm_kscreen",
+                    "systemsettings kcm_kscreen",
+                    "https://userbase.kde.org/System_Settings/Display",
+                )
+            ],
+            "Use System Settings Display (kcm_kscreen): `systemsettings kcm_kscreen`. "
+            "Pick the output and set Resolution there.",
+        ),
+        case(
+            "kde",
+            sk,
+            "take a screenshot",
+            [
+                (
+                    "screenshot_ocr",
+                    {},
+                    {
+                        "ok": True,
+                        "text": "Unlock widgets  |  Add Panel",
+                        "path": "/tmp/kde-ai/shot.png",
+                    },
+                )
+            ],
+            "Captured the screen to /tmp/kde-ai/shot.png. OCR text: Unlock widgets  |  Add Panel",
+        ),
+        case(
+            "kde",
+            sk,
+            "where can i configure environment variable",
+            [
+                _hint_miss("environment"),
+                _docs(
+                    "environment.d",
+                    "5",
+                    "/usr/share/man/man5/environment.d.5",
+                    "environment.d(5) — per-user and system environment settings",
+                ),
+            ],
+            "Not a System Settings KCM. For the Plasma session use systemd "
+            "environment.d(5) (`/usr/share/man/man5/environment.d.5`): drop "
+            "`KEY=value` files in `~/.config/environment.d/`. System-wide is "
+            "`/etc/environment`. `~/.bashrc` only affects terminals. Log out to apply.",
         ),
         case(
             "kde",
@@ -832,6 +915,26 @@ def network_cases() -> list[dict]:
             "firewall rules from chat and I cannot edit /etc/nftables.conf.",
         ),
         case(
+            "cachyos",
+            ["cachyos"],
+            "what custom rules are in my iptable",
+            [
+                _priv(
+                    "nft_list_ruleset",
+                    "table inet filter {\n"
+                    "\tchain input {\n"
+                    "\t\ttype filter hook input priority filter; policy drop;\n"
+                    "\t\tiif \"lo\" accept\n"
+                    "\t\ttcp dport 22 accept\n"
+                    "\t}\n"
+                    "}\n",
+                )
+            ],
+            "Live netfilter is nftables (`nft list ruleset`); iptables-nft is a shim. "
+            "inet filter input policy drop, accept loopback, accept TCP 22. "
+            "I did not run ip route and I will not invent NAT flags.",
+        ),
+        case(
             "rag",
             ["docs"],
             "Who owns DNS on systemd — resolvectl or NM?",
@@ -1011,6 +1114,16 @@ def linux_eng_cases() -> list[dict]:
             ],
             "lspci -nnk: GA102 RTX 3090 [10de:2204], kernel driver nvidia. That matches "
             "an NVIDIA proprietary/open module, not nouveau. Use this when filing driver bugs.",
+        ),
+        case(
+            "tools",
+            ["kde-desktop"],
+            "is my 3090 running on Nvidia driver or nouveau driver",
+            [
+                _info(),
+            ],
+            "The RTX 3090 is using the NVIDIA kernel driver (`nvidia`), not nouveau. "
+            "Userspace version 610.57.",
         ),
         case(
             "tools",

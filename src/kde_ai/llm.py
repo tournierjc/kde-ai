@@ -152,6 +152,8 @@ class LlamaRuntime:
                 or "monitor" in last_l
                 or "uptime" in last_l
                 or "been up" in last_l
+                or "nouveau" in last_l
+                or "nvidia driver" in last_l
             ):
                 return {
                     "choices": [

@@ -353,13 +353,39 @@ def test_is_hardware_question_covers_linux_facts():
     assert is_hardware_lookup("How much RAM do I have?")
     assert is_hardware_lookup("how long my computer has been up")
     assert is_hardware_lookup("uptime")
+    assert is_hardware_question("is my 3090 running on Nvidia driver or nouveau driver")
+    assert is_hardware_lookup("is my 3090 running on Nvidia driver or nouveau driver")
+    assert is_hardware_lookup("Which GPU driver is bound?")
     assert not is_hardware_lookup("My GPU driver crashes after login")
+    assert not is_hardware_lookup("is my nvidia driver crashing after login")
+    from kde_ai.tools.system_info import is_hardware_howto
+
+    q = "how can i change my monitor resolution"
+    assert is_hardware_howto(q)
+    assert not is_hardware_question(q)
+    assert not is_hardware_lookup(q)
+    assert is_hardware_howto("Where is the display scaling setting?")
+    assert not is_hardware_question("Where is the display scaling setting?")
+    assert is_hardware_question("How many monitors do I have?")
+    assert is_hardware_question("what resolution are my monitors")
+    assert not is_hardware_question("where can i configure environment variable")
+    assert not is_hardware_lookup("where can i configure environment variable")
 
 
 FULL_HW = {
     "ok": True,
     "summary": "2 monitors; GPU NVIDIA GeForce RTX 3090",
     "gpu": "NVIDIA GeForce RTX 3090 (24576 MiB, driver 610.57)",
+    "gpus": [
+        {
+            "name": "NVIDIA GeForce RTX 3090",
+            "vram_mb": 24576,
+            "vram_used_mb": 2000,
+            "driver": "610.57",
+            "kernel_driver": "nvidia",
+        }
+    ],
+    "gpu_kernel_driver": "nvidia",
     "monitor_count": 2,
     "monitors": [
         {"name": "DP-1", "brand": "Acer", "model": "XB273K GP"},
@@ -421,6 +447,46 @@ def test_prefer_hardware_reply_linux_and_machine_facts():
     assert "RTX 3090" not in uptime
     assert "monitor" not in uptime.lower()
     assert prefer_hardware_reply("How many monitors?", "I am not sure.", p).lower().count("up ") == 0
+
+
+def test_prefer_hardware_reply_skips_resolution_howto():
+    from kde_ai.tools.system_info import prefer_hardware_reply
+
+    payload = {
+        "ok": True,
+        "summary": "2 monitors (Acer XB273K GP on DP-1; ASUS MG28U on HDMI-A-1)",
+        "monitor_count": 2,
+        "monitors": [
+            {
+                "name": "DP-1",
+                "brand": "Acer",
+                "model": "XB273K GP",
+                "resolution": "3840x2160",
+                "refresh_hz": 120,
+                "primary": True,
+            },
+            {
+                "name": "HDMI-A-1",
+                "brand": "ASUS",
+                "model": "MG28U",
+                "resolution": "3840x2160",
+                "refresh_hz": 60,
+                "primary": False,
+            },
+        ],
+    }
+    howto = "how can i change my monitor resolution"
+    kept = "Open System Settings Display."
+    assert prefer_hardware_reply(howto, kept, payload) == kept
+    dump = prefer_hardware_reply(howto, "I am not sure.", payload)
+    assert dump == "I am not sure."
+    assert "Acer" not in dump and "ASUS" not in dump
+    brands = prefer_hardware_reply("what monitors do I have", "I am not sure.", payload)
+    assert "Acer" in brands and "ASUS" in brands
+    res = prefer_hardware_reply("what resolution are my monitors", "I am not sure.", payload)
+    assert "3840x2160" in res
+    assert "120" in res
+    assert res.lower().startswith("current resolution")
 
 
 def test_handle_includes_cpu_ram_distro(monkeypatch):
@@ -517,3 +583,64 @@ def test_apply_edid_matches_connector_names(tmp_path: Path):
     )
     assert mons[0]["brand"] == "Acer" and mons[0]["model"] == "XB273K GP"
     assert mons[1]["brand"] == "ASUS" and "MG28U" in mons[1]["model"]
+
+
+def test_drm_kernel_driver_nvidia_not_connector(tmp_path: Path):
+    from kde_ai.tools.system_info import collect_drm_kernel_drivers, _merge_kernel_drivers
+
+    card = tmp_path / "card0" / "device"
+    card.mkdir(parents=True)
+    (card / "class").write_text("0x030000\n", encoding="utf-8")
+    (card / "vendor").write_text("0x10de\n", encoding="utf-8")
+    (card / "device").write_text("0x2204\n", encoding="utf-8")
+    kmod = tmp_path / "bus" / "pci" / "drivers" / "nvidia"
+    kmod.mkdir(parents=True)
+    (card / "driver").symlink_to(kmod)
+    (tmp_path / "card0-DP-1").mkdir()
+    got = collect_drm_kernel_drivers(tmp_path)
+    assert len(got) == 1
+    assert got[0]["card"] == "card0"
+    assert got[0]["kernel_driver"] == "nvidia"
+    merged = _merge_kernel_drivers(
+        [{"name": "NVIDIA GeForce RTX 3090", "vram_mb": 24576, "vram_used_mb": 0, "driver": "610.57"}],
+        got,
+    )
+    assert merged[0]["kernel_driver"] == "nvidia"
+
+
+def test_prefer_hardware_reply_nvidia_vs_nouveau():
+    from kde_ai.tools.system_info import prefer_hardware_reply
+
+    dump = (
+        "HDMI-A-1 connected at 3840x2160@60Hz; DP-1 connected at 3840x2160@120Hz "
+        "(primary). GPU NVIDIA GeForce RTX 3090 (driver 610.57.04); 2 monitors. "
+        "I cannot return NVIDIA/NVML CPU driver information."
+    )
+    q = "is my 3090 running on Nvidia driver or nouveau driver"
+    got = prefer_hardware_reply(q, dump, FULL_HW)
+    assert "nvidia" in got.lower()
+    assert "not nouveau" in got.lower()
+    assert "610.57" in got
+    assert "HDMI" not in got
+    assert "CPU driver" not in got
+    assert "monitor" not in got.lower()
+
+    nouveau = {
+        **FULL_HW,
+        "gpus": [
+            {
+                "name": "NVIDIA GeForce RTX 3090",
+                "vram_mb": 0,
+                "vram_used_mb": 0,
+                "driver": "",
+                "kernel_driver": "nouveau",
+            }
+        ],
+        "gpu_kernel_driver": "nouveau",
+        "gpu": "NVIDIA GeForce RTX 3090",
+    }
+    nov = prefer_hardware_reply(q, dump, nouveau)
+    assert "nouveau" in nov.lower()
+    assert "proprietary" in nov.lower()
+    assert "HDMI" not in nov
+

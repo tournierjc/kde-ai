@@ -637,17 +637,126 @@ def _gpus_lspci(run=run_argv) -> list[dict]:
     return gpus
 
 
-def collect_gpus(run=run_argv) -> list[dict]:
-    return _gpus_nvml() or _gpus_nvidia_smi(run) or _gpus_lspci(run)
+_DRM_CARD_RE = re.compile(r"^card\d+$")
+_NVIDIA_KMOD_RE = re.compile(r"^nvidia(?:_|$)")
+
+
+def _sysfs_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
+def _symlink_basename(path: Path) -> str:
+    try:
+        if path.is_symlink():
+            return Path(os.readlink(path)).name
+        if path.exists():
+            return path.resolve().name
+    except OSError:
+        return ""
+    return ""
+
+
+def _pci_class_is_display(class_code: str) -> bool:
+    raw = (class_code or "").lower().replace("0x", "")
+    return raw.startswith("03")
+
+
+def collect_drm_kernel_drivers(drm_root: Path | None = None) -> list[dict]:
+    """Kernel module bound to each DRM GPU (nvidia vs nouveau vs amdgpu)."""
+    root = drm_root or Path("/sys/class/drm")
+    found: list[dict] = []
+    if not root.is_dir():
+        return found
+    for card in sorted(p for p in root.iterdir() if _DRM_CARD_RE.match(p.name)):
+        device = card / "device"
+        if not device.is_dir():
+            continue
+        class_code = _sysfs_text(device / "class")
+        if class_code and not _pci_class_is_display(class_code):
+            continue
+        found.append(
+            {
+                "card": card.name,
+                "kernel_driver": _symlink_basename(device / "driver"),
+                "vendor": _sysfs_text(device / "vendor"),
+                "device": _sysfs_text(device / "device"),
+            }
+        )
+    return found
+
+
+def _gpu_looks_nvidia(name: str, vendor: str = "") -> bool:
+    n = (name or "").lower()
+    v = (vendor or "").lower()
+    return (
+        "nvidia" in n
+        or "geforce" in n
+        or "quadro" in n
+        or "rtx" in n
+        or "gtx" in n
+        or "10de" in v
+    )
+
+
+def _merge_kernel_drivers(gpus: list[dict], drm: list[dict]) -> list[dict]:
+    if not gpus and drm:
+        return [
+            {
+                "name": d.get("card") or "GPU",
+                "vram_mb": 0,
+                "vram_used_mb": 0,
+                "driver": "",
+                "kernel_driver": d.get("kernel_driver") or "",
+            }
+            for d in drm
+        ]
+    if not drm:
+        return [{**g, "kernel_driver": g.get("kernel_driver") or ""} for g in gpus]
+    leftover = list(drm)
+    out: list[dict] = []
+    for gpu in gpus:
+        kd = gpu.get("kernel_driver") or ""
+        idx = None
+        for i, d in enumerate(leftover):
+            drv = (d.get("kernel_driver") or "").lower()
+            nvidia_pair = _gpu_looks_nvidia(gpu.get("name") or "", d.get("vendor") or "") and (
+                _NVIDIA_KMOD_RE.match(drv) or drv == "nouveau" or "10de" in (d.get("vendor") or "").lower()
+            )
+            amd_pair = ("amd" in (gpu.get("name") or "").lower() or "radeon" in (gpu.get("name") or "").lower()) and drv == "amdgpu"
+            intel_pair = ("intel" in (gpu.get("name") or "").lower() or "arc" in (gpu.get("name") or "").lower()) and drv in {
+                "i915",
+                "xe",
+            }
+            if nvidia_pair or amd_pair or intel_pair:
+                idx = i
+                break
+        if idx is None and len(leftover) == 1:
+            idx = 0
+        if idx is not None:
+            bound = leftover.pop(idx)
+            kd = kd or (bound.get("kernel_driver") or "")
+        out.append({**gpu, "kernel_driver": kd})
+    return out
+
+
+def collect_gpus(run=run_argv, drm_root: Path | None = None) -> list[dict]:
+    gpus = _gpus_nvml() or _gpus_nvidia_smi(run) or _gpus_lspci(run)
+    return _merge_kernel_drivers(gpus, collect_drm_kernel_drivers(drm_root))
 
 
 def _gpu_label(gpu: dict) -> str:
     name = gpu.get("name") or "unknown"
     vram = gpu.get("vram_mb") or 0
     driver = gpu.get("driver") or ""
+    kmod = gpu.get("kernel_driver") or ""
     bits = [name]
     if vram:
         bits.append(f"{vram} MiB")
+    if kmod:
+        bits.append(f"module {kmod}")
     if driver:
         bits.append(f"driver {driver}")
     return ", ".join(bits) if len(bits) == 1 else f"{bits[0]} ({', '.join(bits[1:])})"
@@ -732,6 +841,7 @@ def handle(_args: dict, ctx) -> dict:
     monitors = collect_monitors()
     session = _session()
     gpu = _gpu_label(gpus[0]) if gpus else ""
+    gpu_kernel_driver = (gpus[0].get("kernel_driver") or "") if gpus else ""
     boot = collect_kernel_cmdline()
     cpu = collect_cpu()
     ram = collect_ram()
@@ -766,6 +876,7 @@ def handle(_args: dict, ctx) -> dict:
         "gpus": gpus,
         "monitor_count": len(monitors),
         "monitors": monitors,
+        "gpu_kernel_driver": gpu_kernel_driver,
         "cpu": cpu_name,
         "cpu_cores": cpu_cores,
         "cpu_threads": cpu_threads,
@@ -789,10 +900,31 @@ def handle(_args: dict, ctx) -> dict:
     }
 
 
-_HW_GPU_RE = re.compile(r"\bgpu\b|graphics card|video card|\bvram\b|carte graphique", re.I)
+_HW_GPU_RE = re.compile(
+    r"\bgpu\b|graphics card|video card|\bvram\b|carte graphique|"
+    r"\brtx\b|\bgtx\b|\bgeforce\b|\bquadro\b",
+    re.I,
+)
+_HW_GPU_DRIVER_RE = re.compile(
+    r"\bnouveau\b|"
+    r"kernel driver(?: in use)?|"
+    r"which(?: gpu| graphics)? driver|"
+    r"(?:running|using|bound)\s+(?:on|to)\s+(?:the\s+)?(?:nvidia|nouveau)|"
+    r"(?:nvidia|nouveau)\s+driver or (?:the\s+)?(?:nvidia|nouveau)",
+    re.I,
+)
 _HW_MON_RE = re.compile(r"\bmonitors?\b|\bdisplays?\b|\bscreens?\b|écrans?", re.I)
 _HW_BRAND_RE = re.compile(r"\b(brands?|manufacturer|marque|fabricant|models?)\b", re.I)
 _HW_COUNT_RE = re.compile(r"how many|number of|combien", re.I)
+_HW_RESOLUTION_RE = re.compile(r"\bresolutions?\b|\brefresh(?:\s+rate)?\b", re.I)
+_HW_SETTINGS_HOWTO_RE = re.compile(
+    r"how\s+(?:can|do|to|would|should)\s+.{0,80}"
+    r"(?:change|set|configure|adjust|increase|decrease)\b|"
+    r"where\s+(?:do|can|is|are)\s+.{0,60}(?:setting|toggle|kcm)\b|"
+    r"(?:change|set|configure|adjust)\s+.{0,40}"
+    r"\b(?:resolution|scale|refresh|monitor|display|screen)\b",
+    re.I,
+)
 _HW_CMDLINE_RE = re.compile(
     r"kernel\s+(command\s*line|cmdline|parameters?|params)|"
     r"boot\s+(parameters?|params|cmdline|command\s*line)|"
@@ -834,6 +966,7 @@ _HW_UPTIME_RE = re.compile(
 )
 _HW_ANY_RE = (
     _HW_GPU_RE,
+    _HW_GPU_DRIVER_RE,
     _HW_MON_RE,
     _HW_CMDLINE_RE,
     _HW_PLASMA_RE,
@@ -858,8 +991,14 @@ def _history_blob(history: list | None) -> str:
     return " ".join(parts)
 
 
+def is_hardware_howto(text: str) -> bool:
+    return bool(_HW_SETTINGS_HOWTO_RE.search(text or ""))
+
+
 def is_hardware_question(text: str, history: list | None = None) -> bool:
     blob = text or ""
+    if is_hardware_howto(blob):
+        return False
     if any(rx.search(blob) for rx in _HW_ANY_RE):
         return True
     if _HW_BRAND_RE.search(blob) and _HW_MON_RE.search(_history_blob(history)):
@@ -879,7 +1018,28 @@ def is_hardware_lookup(text: str, history: list | None = None) -> bool:
     blob = text or ""
     if _HW_UPTIME_RE.search(blob):
         return True
+    if _HW_GPU_DRIVER_RE.search(blob):
+        return True
     return bool(_HW_LOOKUP_RE.search(blob))
+
+
+def _resolution_answer(payload: dict) -> str:
+    bits: list[str] = []
+    for mon in payload.get("monitors") or []:
+        ident = _monitor_identity(mon) or mon.get("name") or "monitor"
+        name = mon.get("name") or ""
+        extra = f" ({name})" if name and ident != name else ""
+        res = mon.get("resolution") or ""
+        hz = mon.get("refresh_hz")
+        if res and hz:
+            bits.append(f"{ident}{extra}: {res}@{int(hz)}Hz")
+        elif res:
+            bits.append(f"{ident}{extra}: {res}")
+    if not bits:
+        return ""
+    if len(bits) == 1:
+        return f"Current resolution: {bits[0]}."
+    return "Current resolutions: " + "; ".join(bits) + "."
 
 
 def _brand_answer(payload: dict) -> str:
@@ -975,6 +1135,41 @@ def _uptime_answer(payload: dict) -> str:
     return f"Up {human}."
 
 
+def _nvidia_kmod(name: str) -> bool:
+    return bool(_NVIDIA_KMOD_RE.match((name or "").strip().lower()))
+
+
+def _gpu_driver_answer(payload: dict) -> str:
+    gpus = list(payload.get("gpus") or [])
+    fallback = (payload.get("gpu_kernel_driver") or "").strip()
+    if not gpus:
+        label = (payload.get("gpu") or "GPU").split(" (")[0].strip() or "GPU"
+        ver = ""
+        match = re.search(r"driver\s+(\S+)", payload.get("gpu") or "", re.I)
+        if match:
+            ver = match.group(1).rstrip(").,")
+        gpus = [{"name": label, "kernel_driver": fallback, "driver": ver}]
+    bits: list[str] = []
+    for gpu in gpus:
+        name = (gpu.get("name") or "GPU").split(" (")[0].strip() or "GPU"
+        kmod = (gpu.get("kernel_driver") or fallback or "").strip()
+        ver = (gpu.get("driver") or "").strip()
+        if kmod.lower() == "nouveau":
+            bits.append(f"{name} is using nouveau, not the NVIDIA proprietary driver.")
+        elif _nvidia_kmod(kmod):
+            extra = f" Userspace version {ver}." if ver else ""
+            bits.append(
+                f"{name} is using the NVIDIA kernel driver (`{kmod}`), not nouveau.{extra}"
+            )
+        elif ver:
+            bits.append(
+                f"{name} has NVIDIA userspace driver {ver} (nvidia-smi/NVML), so it is not nouveau."
+            )
+        elif kmod:
+            bits.append(f"{name} kernel driver: `{kmod}`.")
+    return " ".join(bits)
+
+
 def prefer_hardware_reply(
     user_text: str,
     model_text: str,
@@ -984,10 +1179,13 @@ def prefer_hardware_reply(
     if not payload or not payload.get("ok"):
         return model_text
     q = user_text or ""
+    if is_hardware_howto(q):
+        return model_text
     blob = (model_text or "").lower()
     wants_gpu = bool(_HW_GPU_RE.search(q))
     wants_mon = bool(_HW_MON_RE.search(q))
     wants_brand = bool(_HW_BRAND_RE.search(q))
+    wants_resolution = bool(_HW_RESOLUTION_RE.search(q))
     wants_cmdline = bool(_HW_CMDLINE_RE.search(q))
     wants_plasma = bool(_HW_PLASMA_RE.search(q))
     wants_kernel_ver = bool(_HW_KERNEL_VER_RE.search(q)) and not wants_cmdline
@@ -999,6 +1197,7 @@ def prefer_hardware_reply(
     wants_qt = bool(_HW_QT_RE.search(q))
     wants_board = bool(_HW_BOARD_RE.search(q))
     wants_uptime = bool(_HW_UPTIME_RE.search(q))
+    wants_gpu_driver = bool(_HW_GPU_DRIVER_RE.search(q))
     if wants_brand and not wants_mon and _HW_MON_RE.search(_history_blob(history)):
         wants_mon = True
     wants_count = bool(_HW_COUNT_RE.search(q)) and wants_mon
@@ -1008,13 +1207,15 @@ def prefer_hardware_reply(
         if m.get("brand") or m.get("model")
     ]
     if wants_mon and not wants_count and not wants_brand and idents:
-        wants_brand = True
+        if not wants_resolution:
+            wants_brand = True
     any_hw = any(
         (
             wants_gpu,
             wants_mon,
             wants_brand,
             wants_count,
+            wants_resolution,
             wants_cmdline,
             wants_plasma,
             wants_kernel_ver,
@@ -1026,11 +1227,64 @@ def prefer_hardware_reply(
             wants_qt,
             wants_board,
             wants_uptime,
+            wants_gpu_driver,
         )
     )
     if not any_hw:
         return model_text
+    driver_only = False
+    if wants_gpu_driver:
+        driver_others = any(
+            (
+                wants_mon,
+                wants_brand,
+                wants_count,
+                wants_resolution,
+                wants_cmdline,
+                wants_plasma,
+                wants_kernel_ver,
+                wants_distro,
+                wants_cpu,
+                wants_ram,
+                wants_host,
+                wants_session,
+                wants_qt,
+                wants_board,
+                wants_uptime,
+            )
+        )
+        driver_ans = _gpu_driver_answer(payload)
+        if driver_ans and not driver_others:
+            return driver_ans
+        driver_only = bool(driver_ans)
+        if driver_only:
+            wants_gpu = False
+    if wants_resolution:
+        res_others = any(
+            (
+                wants_gpu,
+                wants_brand,
+                wants_count,
+                wants_cmdline,
+                wants_plasma,
+                wants_kernel_ver,
+                wants_distro,
+                wants_cpu,
+                wants_ram,
+                wants_host,
+                wants_session,
+                wants_qt,
+                wants_board,
+                wants_uptime,
+                wants_gpu_driver,
+            )
+        )
+        res_ans = _resolution_answer(payload)
+        if res_ans and not res_others:
+            return res_ans
     replacements: list[str] = []
+    if driver_only:
+        replacements.append(_gpu_driver_answer(payload))
     gpu_name = (payload.get("gpu") or "").split(" (")[0].strip()
     if wants_gpu and not (gpu_name and gpu_name.lower() in blob):
         if payload.get("gpu"):
@@ -1050,6 +1304,19 @@ def prefer_hardware_reply(
             branded = _brand_answer(payload)
             if branded:
                 replacements.append(branded)
+    if wants_resolution:
+        res_ans = _resolution_answer(payload)
+        if res_ans:
+            monitors = payload.get("monitors") or []
+            blob_ok = all(
+                (m.get("resolution") or "").lower() in blob
+                for m in monitors
+                if m.get("resolution")
+            )
+            if monitors and any(m.get("resolution") for m in monitors) and not blob_ok:
+                replacements.append(res_ans)
+            elif not blob_ok and res_ans.lower() not in blob:
+                replacements.append(res_ans)
     cmdline = payload.get("kernel_cmdline") or ""
     interesting = _cmdline_tokens(cmdline)
     if wants_cmdline:
@@ -1132,6 +1399,8 @@ def prefer_hardware_reply(
                 wants_session,
                 wants_qt,
                 wants_board,
+                wants_gpu_driver,
+                wants_resolution,
             )
         )
         human = (payload.get("uptime") or "").strip()
@@ -1150,7 +1419,8 @@ SCHEMA = {
         "Live snapshot of this machine: distro, Plasma, Qt, session, GPU, monitors "
         "(count/brand/model), CPU, RAM, motherboard, hostname, uptime and boot_time, "
         "kernel (running version), kernel_cmdline (this boot from /proc/cmdline plus "
-        "Limine/GRUB config). Call for hardware, versions, uptime, or boot parameters."
+        "Limine/GRUB config), gpus[].kernel_driver (sysfs DRM module: nvidia vs nouveau). "
+        "Call for hardware, versions, uptime, boot parameters, or which GPU kernel driver is bound."
     ),
     "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
 }

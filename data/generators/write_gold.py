@@ -27,7 +27,7 @@ READONLY = [
     "lspci_vga",
     "echo_session",
 ]
-PRIV = ["id", "systemctl_status_unit", "journalctl_system_n", "dmesg"]
+PRIV = ["id", "systemctl_status_unit", "journalctl_system_n", "dmesg", "nft_list_ruleset"]
 PLASMA = ["kwin_compositing", "plasma_restart", "notify_test"]
 
 
@@ -77,6 +77,15 @@ def gold_records() -> list[dict]:
         "ok": True,
         "summary": "2 monitors (DP-1 3840x2160@120Hz primary; HDMI-A-1 3840x2160@60Hz); GPU NVIDIA GeForce RTX 3090 (24576 MiB, driver 610.57); plasmashell 6.7.4; wayland",
         "gpu": "NVIDIA GeForce RTX 3090 (24576 MiB, driver 610.57)",
+        "gpus": [
+            {
+                "name": "NVIDIA GeForce RTX 3090",
+                "vram_mb": 24576,
+                "driver": "610.57",
+                "kernel_driver": "nvidia",
+            }
+        ],
+        "gpu_kernel_driver": "nvidia",
         "monitor_count": 2,
         "monitors": [
             {
@@ -237,6 +246,16 @@ def gold_records() -> list[dict]:
             "Up 2 days, 3 hours, 14 minutes (since 2026-08-25 19:19).",
         )
     )
+    add(
+        _tool_traj(
+            "gold-system_info-hw-gpu-driver",
+            "system_info",
+            {},
+            hw_machine,
+            "is my 3090 running on Nvidia driver or nouveau driver",
+            "The RTX 3090 is using the NVIDIA kernel driver (`nvidia`), not nouveau. Userspace version 610.57.",
+        )
+    )
     for i, name in enumerate(READONLY):
         pkg = {"pkg": "plasma-workspace"} if name.startswith("pacman") else {}
         add(
@@ -295,6 +314,115 @@ def gold_records() -> list[dict]:
             "Use System Settings Display (kcm_kscreen): systemsettings kcm_kscreen.",
             domain="kde",
             skills=["kde-desktop"],
+        )
+    )
+    add(
+        _tool_traj(
+            "gold-kcm-resolution",
+            "kde_settings_hint",
+            {"query": "display"},
+            {"ok": True, "kcm": "kcm_kscreen", "command": "systemsettings kcm_kscreen", "doc": "https://userbase.kde.org/System_Settings/Display"},
+            "how can i change my monitor resolution",
+            "Use System Settings Display (kcm_kscreen): `systemsettings kcm_kscreen`. "
+            "Pick the output and set Resolution (and refresh) there.",
+            domain="kde",
+            skills=["kde-desktop"],
+        )
+    )
+    add(
+        _tool_traj(
+            "gold-kcm-resolution-set",
+            "kde_settings_hint",
+            {"query": "resolution"},
+            {"ok": True, "kcm": "kcm_kscreen", "command": "systemsettings kcm_kscreen", "doc": "https://userbase.kde.org/System_Settings/Display"},
+            "how do I set my screen resolution",
+            "Use System Settings Display (kcm_kscreen): `systemsettings kcm_kscreen`. "
+            "Pick the output and set Resolution there.",
+            domain="kde",
+            skills=["kde-desktop"],
+        )
+    )
+    add(
+        record(
+            "gold-kcm-resolution-then-screenshot",
+            "kde",
+            False,
+            ["kde-desktop"],
+            [
+                user("how can i change my monitor resolution"),
+                assistant_tools([call("kde_settings_hint", {"query": "display"})]),
+                tool(
+                    "kde_settings_hint",
+                    {
+                        "ok": True,
+                        "kcm": "kcm_kscreen",
+                        "command": "systemsettings kcm_kscreen",
+                        "doc": "https://userbase.kde.org/System_Settings/Display",
+                    },
+                ),
+                assistant_text(
+                    "Use System Settings Display (kcm_kscreen): `systemsettings kcm_kscreen`. "
+                    "Pick the output and set Resolution (and refresh) there."
+                ),
+                user("you did not answer the question"),
+                assistant_text(
+                    "To change resolution, open System Settings Display (`kcm_kscreen`): "
+                    "`systemsettings kcm_kscreen`. Select the output, then Resolution."
+                ),
+                user("take a screenshot"),
+                assistant_tools([call("screenshot_ocr", {}, cid="2")]),
+                tool(
+                    "screenshot_ocr",
+                    {
+                        "ok": True,
+                        "text": "Unlock widgets  |  Add Panel",
+                        "path": "/tmp/kde-ai/shot.png",
+                    },
+                ),
+                assistant_text(
+                    "Captured the screen to /tmp/kde-ai/shot.png. "
+                    "OCR text: Unlock widgets  |  Add Panel"
+                ),
+            ],
+            tags=["tool:kde_settings_hint", "tool:screenshot_ocr"],
+        )
+    )
+    add(
+        record(
+            "gold-kcm-env",
+            "kde",
+            False,
+            ["kde-desktop"],
+            [
+                user("where can i configure environment variable"),
+                assistant_tools([call("kde_settings_hint", {"query": "environment"})]),
+                tool(
+                    "kde_settings_hint",
+                    {"ok": True, "matched": False, "kcm": None, "command": None, "doc": None},
+                ),
+                assistant_tools([call("search_docs", {"query": "environment.d"}, cid="2")]),
+                tool(
+                    "search_docs",
+                    {
+                        "ok": True,
+                        "hits": [
+                            {
+                                "title": "environment.d",
+                                "path": "/usr/share/man/man5/environment.d.5",
+                                "section": "5",
+                                "snippet": "environment.d(5) — per-user and system environment settings",
+                            }
+                        ],
+                    },
+                ),
+                assistant_text(
+                    "Not a System Settings KCM. For the Plasma session use systemd "
+                    "environment.d(5) (`/usr/share/man/man5/environment.d.5`): drop "
+                    "`KEY=value` files in `~/.config/environment.d/`. System-wide is "
+                    "`/etc/environment`. `~/.bashrc` only affects terminals. Log out to apply."
+                ),
+            ],
+            tags=["tool:kde_settings_hint", "tool:search_docs", "rag_cite"],
         )
     )
     for i, (title, sec, path) in enumerate(MAN):
@@ -375,6 +503,18 @@ def gold_records() -> list[dict]:
             skills=["kde-desktop"],
         )
     )
+    add(
+        _tool_traj(
+            "gold-ocr-screenshot",
+            "screenshot_ocr",
+            {},
+            {"ok": True, "text": "Unlock widgets  |  Add Panel", "path": "/tmp/kde-ai/shot.png"},
+            "take a screenshot",
+            "Captured the screen to /tmp/kde-ai/shot.png. OCR text: Unlock widgets  |  Add Panel",
+            domain="kde",
+            skills=["kde-desktop"],
+        )
+    )
 
     # extra readonly/privileged/plasma coverage
     for i, name in enumerate(PRIV):
@@ -393,6 +533,32 @@ def gold_records() -> list[dict]:
                 skills=["cachyos"],
             )
         )
+    add(
+        _tool_traj(
+            "gold-priv-nft-iptables",
+            "run_privileged_cmd",
+            {"name": "nft_list_ruleset"},
+            {
+                "ok": True,
+                "code": 0,
+                "stdout": (
+                    "table inet filter {\n"
+                    "\tchain input {\n"
+                    "\t\ttype filter hook input priority filter; policy drop;\n"
+                    "\t\tiif \"lo\" accept\n"
+                    "\t\ttcp dport 22 accept\n"
+                    "\t}\n"
+                    "}\n"
+                ),
+            },
+            "what custom rules are in my iptable",
+            "Live netfilter is nftables (iptables-nft is a shim), not ip route. "
+            "inet filter input policy drop; accept loopback; accept TCP 22. "
+            "Those are the custom rules in this dump.",
+            domain="cachyos",
+            skills=["cachyos"],
+        )
+    )
     for name in PLASMA:
         add(
             _tool_traj(
