@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 import yaml
@@ -56,9 +57,15 @@ def main() -> None:
         task_type=TaskType.CAUSAL_LM,
         bias="none",
     )
+    train_dir = Path(__file__).resolve().parent
+    if str(train_dir) not in sys.path:
+        sys.path.insert(0, str(train_dir))
+    from chat_normalize import normalize_record
+
     raw = load_dataset("json", data_files=train_file, split="train")
     keep = [c for c in raw.column_names if c == "messages"]
     ds = raw.remove_columns([c for c in raw.column_names if c not in keep])
+    ds = ds.map(normalize_record)
 
     # transformers 5 / TRL 1.12 TrainingArguments dropped warmup_ratio.
     per_device = int(cfg.get("per_device_train_batch_size", 1))

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 import yaml
@@ -57,7 +58,13 @@ def main() -> None:
 
     raw = load_dataset("json", data_files=str(Path(cfg["train_file"])), split="train")
 
+    train_dir = Path(__file__).resolve().parent
+    if str(train_dir) not in sys.path:
+        sys.path.insert(0, str(train_dir))
+    from chat_normalize import normalize_messages, normalize_record
+
     def row(ex):
+        ex = normalize_record(ex)
         prompt = ex.get("prompt") or ex["messages"][:2]
         chosen = ex["chosen"]
         rejected = ex["rejected"]
@@ -65,7 +72,11 @@ def main() -> None:
             chosen = [chosen]
         if isinstance(rejected, dict):
             rejected = [rejected]
-        return {"prompt": prompt, "chosen": chosen, "rejected": rejected}
+        return {
+            "prompt": normalize_messages(prompt) if isinstance(prompt, list) else prompt,
+            "chosen": chosen,
+            "rejected": rejected,
+        }
 
     ds = raw.map(row, remove_columns=raw.column_names)
 
