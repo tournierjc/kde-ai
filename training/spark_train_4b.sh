@@ -30,6 +30,8 @@ for d in sft-4b dpo-4b; do
   fi
 done
 mkdir -p checkpoints/sft-4b checkpoints/dpo-4b
+: > checkpoints/sft-4b/train.log
+: > checkpoints/dpo-4b/train.log
 
 tmux has-session -t kde-ai-sft 2>/dev/null && tmux kill-session -t kde-ai-sft || true
 tmux new-session -d -s kde-ai-sft -c "$ROOT" "

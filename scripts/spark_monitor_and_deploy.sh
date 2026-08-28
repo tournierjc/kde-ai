@@ -14,7 +14,13 @@ log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
 
 wait_for_done() {
   while true; do
-    if ssh "$SPARK" "grep -q '=== DONE' '$SPARK_ROOT/checkpoints/dpo-4b/train.log' 2>/dev/null"; then
+    if ssh "$SPARK" "
+      test -f '$SPARK_ROOT/checkpoints/sft-4b/adapter_config.json' &&
+      test -f '$SPARK_ROOT/checkpoints/dpo-4b/adapter_config.json' &&
+      grep -q '=== DONE' '$SPARK_ROOT/checkpoints/dpo-4b/train.log' 2>/dev/null &&
+      ! pgrep -f 'train_sft.py.*sft_qwen35_4b' >/dev/null &&
+      ! pgrep -f 'train_dpo.py.*dpo_qwen35_4b' >/dev/null
+    "; then
       log "training finished"
       return 0
     fi
