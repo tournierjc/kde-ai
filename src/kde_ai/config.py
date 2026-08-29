@@ -106,6 +106,7 @@ DEFAULTS: dict[str, Any] = {
         "prefix": "ai ",
         "global_shortcut": "",
         "default_page": "chat",
+        "ui_surface": "panel",
     },
     "skills": {
         "max_enabled_per_session": 3,
@@ -131,12 +132,14 @@ CONFIG_SET_WHITELIST = {
     "plasma.prefix",
     "plasma.global_shortcut",
     "plasma.default_page",
+    "plasma.ui_surface",
     "skills.enabled",
     "network.offline",
     "privilege.frontend_default",
 }
 
 _LIST_KEYS = {"gpu.graphics_allow", "gpu.denylist", "skills.enabled"}
+_PLASMA_UI_SURFACES = {"panel", "tray", "none"}
 GPU_ALLOW_CORE = ("kwin", "plasmashell", "xorg")
 
 
@@ -291,6 +294,16 @@ def apply_patch(cfg: Config, patch: dict) -> list[str]:
                     re.compile(pat)
                 except re.error as exc:
                     raise RpcError(VALIDATION, f"invalid gpu.denylist pattern {pat!r}: {exc}") from exc
+        if key == "plasma.ui_surface":
+            from kde_ai.errors import VALIDATION, RpcError
+
+            surface = str(value or "").strip().lower()
+            if surface not in _PLASMA_UI_SURFACES:
+                raise RpcError(
+                    VALIDATION,
+                    f"plasma.ui_surface must be one of: {', '.join(sorted(_PLASMA_UI_SURFACES))}",
+                )
+            value = surface
         cfg.set_path(key, value)
         changed.append(key)
     cfg.save()

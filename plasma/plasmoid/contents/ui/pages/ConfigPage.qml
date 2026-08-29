@@ -7,6 +7,7 @@ import ".."
 
 Item {
     id: configPage
+    property var plasmoidRoot: null
     ExecRpc { id: rpc }
 
     function linesToCsv(text) {
@@ -36,6 +37,25 @@ Item {
 
             Kirigami.FormLayout {
                 Layout.fillWidth: true
+                QQC2.ComboBox {
+                    id: uiSurface
+                    Kirigami.FormData.label: "Plasma icon"
+                    textRole: "text"
+                    valueRole: "value"
+                    model: [
+                        { text: "Panel widget", value: "panel" },
+                        { text: "System tray", value: "tray" },
+                        { text: "Hidden (shortcut only)", value: "none" }
+                    ]
+                    Accessible.name: "Plasma icon placement"
+                }
+                QQC2.Label {
+                    Kirigami.FormData.label: ""
+                    text: "Pick one surface to avoid duplicate panel + tray icons. Add the widget to the system tray manually when using System tray."
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                    opacity: 0.75
+                }
                 QQC2.Switch {
                     id: en
                     Kirigami.FormData.label: "Agent"
@@ -135,6 +155,10 @@ Item {
     }
 
     function save() {
+        rpc.rpc("config set plasma.ui_surface " + uiSurface.currentValue, function() {
+            if (configPage.plasmoidRoot)
+                configPage.plasmoidRoot.uiSurface = uiSurface.currentValue
+        })
         rpc.rpc("config set daemon.enabled " + (en.checked ? "true" : "false"), function() {})
         rpc.rpc("config set rag.enabled " + (rag.checked ? "true" : "false"), function() {})
         rpc.rpc("config set daemon.idle_unload_s " + idle.value, function() {})
@@ -154,8 +178,12 @@ Item {
             idle.value = r.daemon.idle_unload_s
             force.checked = r.daemon.force_run_during_pause
         }
-        if (r && r.plasma)
+        if (r && r.plasma) {
             shortcut.keySequence = r.plasma.global_shortcut || ""
+            const surface = r.plasma.ui_surface || "panel"
+            const idx = uiSurface.model.findIndex(function (row) { return row.value === surface })
+            uiSurface.currentIndex = idx >= 0 ? idx : 0
+        }
         if (r && r.gpu) {
             allow.text = configPage.listToLines(r.gpu.graphics_allow)
             deny.text = configPage.listToLines(r.gpu.denylist)

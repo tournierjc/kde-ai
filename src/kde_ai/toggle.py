@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Toggle the KDE AI window (optional global shortcut, unset by default)."""
+"""Open, close, or toggle the KDE AI window (optional global shortcut, unset by default)."""
 
 from __future__ import annotations
 
@@ -29,6 +29,10 @@ def _pids(proc_name: str, needle: str | None = None) -> list[int]:
     return pids
 
 
+def window_pids() -> list[int]:
+    return _pids("kde-ai-ui") or _pids("plasmawindowed", "org.kde.kdeai")
+
+
 def _close(pids: list[int]) -> bool:
     closed = False
     for pid in pids:
@@ -40,23 +44,59 @@ def _close(pids: list[int]) -> bool:
     return closed
 
 
-def main() -> None:
-    if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
-        print("KDE AI: no graphical session.", file=sys.stderr)
-        raise SystemExit(1)
-    if _close(_pids("kde-ai-ui") or _pids("plasmawindowed", "org.kde.kdeai")):
-        return
+def _activate_existing() -> bool:
+    if not window_pids():
+        return False
+    for cmd in (["kstart6", "--activate", "org.kde.kdeai"], ["kstart", "--activate", "org.kde.kdeai"]):
+        if shutil.which(cmd[0]):
+            subprocess.run(cmd, check=False, capture_output=True)
+            return True
+    return True
+
+
+def _launch_window() -> int:
     # Wayland's task manager maps windows by desktop file name.
     # plasmawindowed hardcodes org.kde.plasmawindowed → the Plasma logo, so
     # prefer kde-ai-ui which reports org.kde.kdeai and ships the circuit-brain icon.
     ui = shutil.which("kde-ai-ui")
     if ui:
-        os.execvp(ui, [ui])
+        subprocess.Popen(
+            [ui],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        return 0
     windowed = shutil.which("plasmawindowed")
     if windowed:
-        os.execvp(windowed, [windowed, "org.kde.kdeai"])
+        subprocess.Popen(
+            [windowed, "org.kde.kdeai"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        return 0
     print("KDE AI: install kde-ai-ui (pip install -e '.[ui]') or plasmawindowed.", file=sys.stderr)
-    raise SystemExit(1)
+    return 1
+
+
+def open_window() -> int:
+    if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+        print("KDE AI: no graphical session.", file=sys.stderr)
+        return 1
+    if _activate_existing():
+        return 0
+    return _launch_window()
+
+
+def close_window() -> bool:
+    return _close(window_pids())
+
+
+def main() -> None:
+    if close_window():
+        return
+    raise SystemExit(open_window())
 
 
 if __name__ == "__main__":

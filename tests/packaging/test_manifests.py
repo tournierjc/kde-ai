@@ -48,6 +48,7 @@ def test_setup_script_restores_plasma_previous_activity():
 def test_toggle_closes_existing_plasmawindowed():
     src = (REPO / "src/kde_ai/toggle.py").read_text(encoding="utf-8")
     assert "_close" in src
+    assert "open_window" in src
     assert "SIGTERM" in src
     assert "org.kde.kdeai" in src
     assert "plasmawindowed" in src
@@ -64,6 +65,8 @@ def test_config_page_has_customizable_shortcut():
     assert "onKeySequenceModified" in qml
     assert "Méta" in qml
     assert "GPU allow list" in qml
+    assert "plasma.ui_surface" in qml or "ui_surface" in qml
+    assert "Plasma icon" in qml
     assert "gpu.graphics_allow" in qml
     assert "gpu.denylist" in qml
     assert "invent.token" not in qml
@@ -96,13 +99,18 @@ def test_app_icon_is_shipped():
     ui = (REPO / "src/kde_ai/ui.py").read_text(encoding="utf-8")
     assert "_app_icon" in ui
     qml = (REPO / "plasma/plasmoid/contents/ui/main.qml").read_text(encoding="utf-8")
-    assert 'icon.name: paused ? "media-playback-pause" : "org.kde.kdeai"' in qml
-    assert 'icon.source: paused ? "" : Qt.resolvedUrl("../icons/org.kde.kdeai.svg")' in qml
+    assert 'icon.name: root.paused ? "media-playback-pause" : "org.kde.kdeai"' in qml
+    assert "IconOnly" in qml
+    assert "inSystemTray" in qml
     assert 'Plasmoid.icon: "org.kde.kdeai"' in qml
     assert "contextualActions" in qml
     assert 'text: "Quit"' in qml
     assert 'text: "Start agent"' in qml
     assert 'trayRpc.rpc("quit"' in qml
+    assert "openAgentWindow" in qml
+    assert "kde-ai open" in qml
+    assert "uiSurface" in qml
+    assert "applyUiSurface" in qml
     assert "PlasmaCore.Action" in qml
 
 

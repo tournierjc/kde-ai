@@ -5,6 +5,7 @@ import org.kde.kirigami as Kirigami
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.plasmoid
 import org.kde.plasma.components as PlasmaComponents
+import org.kde.plasma.plasma5support as Plasma5Support
 import "pages" as Pages
 
 PlasmoidItem {
@@ -12,11 +13,38 @@ PlasmoidItem {
 
     property string page: "chat"
     property string statusText: "idle"
+    property string uiSurface: "panel"
     property bool paused: statusText === "paused"
     property bool awaiting: statusText === "awaiting_confirm"
     property bool agentStopped: statusText === "stopped"
     readonly property bool onPanel: Plasmoid.formFactor === PlasmaCore.Types.Horizontal
         || Plasmoid.formFactor === PlasmaCore.Types.Vertical
+    readonly property bool inSystemTray: Plasmoid.containment
+        && Plasmoid.containment.pluginName === "org.kde.plasma.systemtray"
+    readonly property bool onPanelWidget: Plasmoid.containment
+        && Plasmoid.containment.pluginName === "org.kde.panel"
+
+    function applyUiSurface() {
+        if (uiSurface === "none") {
+            Plasmoid.status = PlasmaCore.Types.HiddenStatus
+        } else if (uiSurface === "panel" && inSystemTray) {
+            Plasmoid.status = PlasmaCore.Types.HiddenStatus
+        } else if (uiSurface === "tray" && onPanelWidget) {
+            Plasmoid.status = PlasmaCore.Types.HiddenStatus
+        } else {
+            Plasmoid.status = PlasmaCore.Types.ActiveStatus
+        }
+    }
+
+    onUiSurfaceChanged: applyUiSurface()
+    Component.onCompleted: {
+        trayRpc.rpc("config get", function(r) {
+            if (r && r.plasma && r.plasma.ui_surface)
+                root.uiSurface = r.plasma.ui_surface
+            else
+                root.applyUiSurface()
+        })
+    }
 
     // Panel keeps the compact "AI" chip. plasmawindowed / desktop must use the
     // full pages — locking compact left an empty window with overlays off-canvas.
@@ -25,10 +53,20 @@ PlasmoidItem {
     preferredRepresentation: onPanel ? compactRepresentation : fullRepresentation
 
     toolTipMainText: "KDE AI"
-    toolTipSubText: agentStopped ? "Stopped — right-click to start" : (paused ? "Paused — GPU in use" : "Local KDE/CachyOS agent")
+    toolTipSubText: agentStopped
+        ? "Stopped — right-click to start"
+        : (paused ? "Paused — GPU in use · click to open" : "Click to open the agent window")
     Plasmoid.icon: "org.kde.kdeai"
 
     ExecRpc { id: trayRpc }
+
+    Plasma5Support.DataSource {
+        id: windowExe
+        engine: "executable"
+        function openAgentWindow() {
+            connectSource("kde-ai open")
+        }
+    }
 
     Timer {
         interval: 2000
@@ -61,12 +99,22 @@ PlasmoidItem {
     ]
 
     compactRepresentation: PlasmaComponents.ToolButton {
-        text: root.agentStopped ? "AI ·" : (paused ? "AI ‖" : (awaiting ? "AI ?" : "AI"))
-        Accessible.name: root.agentStopped ? "KDE AI stopped" : (paused ? "KDE AI paused" : "KDE AI agent")
-        icon.name: paused ? "media-playback-pause" : "org.kde.kdeai"
-        icon.source: paused ? "" : Qt.resolvedUrl("../icons/org.kde.kdeai.svg")
-        onClicked: root.expanded = !root.expanded
-        onPressAndHold: root.expanded = true
+        readonly property string chipText: root.agentStopped ? "AI ·"
+            : (root.paused ? "AI ‖" : (root.awaiting ? "AI ?" : "AI"))
+
+        display: root.inSystemTray
+            ? PlasmaComponents.AbstractButton.IconOnly
+            : PlasmaComponents.AbstractButton.TextOnly
+        flat: root.inSystemTray
+        text: root.inSystemTray ? "" : chipText
+        icon.name: root.paused ? "media-playback-pause" : "org.kde.kdeai"
+        icon.width: Kirigami.Units.iconSizes.smallMedium
+        icon.height: Kirigami.Units.iconSizes.smallMedium
+        Accessible.name: root.agentStopped ? "KDE AI stopped" : (root.paused ? "KDE AI paused" : "KDE AI agent")
+        onClicked: {
+            root.expanded = false
+            windowExe.openAgentWindow()
+        }
     }
 
     fullRepresentation: Item {
@@ -150,7 +198,9 @@ PlasmoidItem {
                 Pages.ChatPage { awaiting: root.awaiting }
                 Pages.MemoryPage {}
                 Pages.SkillsPage {}
-                Pages.ConfigPage {}
+                Pages.ConfigPage {
+                    plasmoidRoot: root
+                }
             }
         }
     }

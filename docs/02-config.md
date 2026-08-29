@@ -76,6 +76,7 @@ krunner_session = "last"
 prefix = "ai "
 global_shortcut = ""
 default_page = "chat"
+ui_surface = "panel"
 
 [skills]
 max_enabled_per_session = 3
@@ -87,10 +88,12 @@ Shipped skills are domain playbooks. Enabled skills union their `tools:` lists (
 
 ## `config.set` whitelist
 
-`daemon.enabled`, `daemon.idle_unload_s`, `daemon.log_level`, `daemon.force_run_during_pause`, `llm.gguf`, `llm.temperature`, `llm.top_p`, `gpu.denylist`, `gpu.graphics_allow`, `rag.enabled`, `rag.reindex_on_boot`, `cli.default_session`, `cli.krunner_session`, `plasma.prefix`, `plasma.global_shortcut`, `plasma.default_page`, `skills.enabled`, `network.offline`, `privilege.frontend_default`.
+`daemon.enabled`, `daemon.idle_unload_s`, `daemon.log_level`, `daemon.force_run_during_pause`, `llm.gguf`, `llm.temperature`, `llm.top_p`, `gpu.denylist`, `gpu.graphics_allow`, `rag.enabled`, `rag.reindex_on_boot`, `cli.default_session`, `cli.krunner_session`, `plasma.prefix`, `plasma.global_shortcut`, `plasma.default_page`, `plasma.ui_surface`, `skills.enabled`, `network.offline`, `privilege.frontend_default`.
 
 `gpu.graphics_allow` is process-name fragments for CUDA apps that should **not** pause the agent (Firefox, Discord, `openlogi`, …). Edit them on the Config page (one name per line) or `kde-ai config set gpu.graphics_allow kwin,firefox,openlogi`. `kwin`, `plasmashell`, and `Xorg` stay allowed even if you omit them. `gpu.denylist` is regexes that **always** pause when those processes use the GPU.
 
 `plasma.global_shortcut` is empty by default. The Config page applies it as soon as you capture a chord (`kde-ai shortcut Meta+Ctrl+K` / `kde-ai shortcut clear`). `config set` also accepts a bare token (not only JSON) so the plasmoid shell does not strip the quotes off a shortcut string.
+
+`plasma.ui_surface` controls where the plasmoid icon appears: `panel` (default — panel widget only, hidden inside the system tray), `tray` (system tray only; add the widget to the tray yourself and remove any panel copy), or `none` (no plasmoid icon — use the window shortcut or application launcher). Pick one surface to avoid duplicate panel + tray icons.
 
 Anything else → `VALIDATION`.

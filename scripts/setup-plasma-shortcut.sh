@@ -3,7 +3,7 @@
 # Meta+Shift+A "previous activity" binding if we previously stole it, and add
 # the plasmoid to the first panel if it is missing.
 set -euo pipefail
-
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # Qt::META|SHIFT|Key_A — only used to give the chord back to plasmashell.
 META_SHIFT_A=301989953
 
@@ -97,7 +97,17 @@ register_empty_kdeai_shortcut() {
 }
 
 add_panel_widget() {
-  local qdbus
+  local qdbus surface
+  surface="panel"
+  if command -v python3 >/dev/null 2>&1; then
+    surface="$(PYTHONPATH="${ROOT:-}:src" python3 -c "
+from kde_ai.config import Config
+print(Config().get('plasma.ui_surface', 'panel'))
+" 2>/dev/null || echo panel)"
+  fi
+  if [[ "${surface}" != "panel" ]]; then
+    return 0
+  fi
   qdbus="$(command -v qdbus6 || command -v qdbus || true)"
   if [[ -z "${qdbus}" ]]; then
     return 0

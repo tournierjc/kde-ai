@@ -230,6 +230,12 @@ def cmd_start() -> int:
     return 0
 
 
+def cmd_open() -> int:
+    from kde_ai.toggle import open_window
+
+    return open_window()
+
+
 def main(argv: list[str] | None = None) -> None:
     global JSON_MODE
     parser = argparse.ArgumentParser(prog="kde-ai")
@@ -255,6 +261,7 @@ def main(argv: list[str] | None = None) -> None:
     pc.add_argument("-s", "--session")
     sub.add_parser("cancel-attempt")
     sub.add_parser("status")
+    sub.add_parser("open")
     sub.add_parser("quit", aliases=["stop"])
     sub.add_parser("start")
     pdoc = sub.add_parser("doctor")
@@ -276,6 +283,8 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(cmd_quit())
     if args.cmd == "start":
         raise SystemExit(cmd_start())
+    if args.cmd == "open":
+        raise SystemExit(cmd_open())
     if args.cmd == "status":
         raise SystemExit(cmd_status())
     rpc = connect()
