@@ -7,6 +7,7 @@ import time
 from typing import Any, Callable
 
 from kde_ai.errors import RpcError
+from kde_ai.lifecycle import clear_user_stopped, is_user_stopped
 from kde_ai.paths import socket_path
 from kde_ai.protocol import decode_line, encode, request
 
@@ -20,6 +21,8 @@ class RpcClient:
 
     def connect(self, start_daemon: bool = True) -> None:
         path = socket_path()
+        if start_daemon and is_user_stopped():
+            clear_user_stopped()
         if not path.exists() and start_daemon:
             subprocess.Popen(
                 ["systemctl", "--user", "start", "kde-ai-agent.service"],

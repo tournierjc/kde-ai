@@ -33,5 +33,14 @@ Undo the open attempt.
 .TP
 .B status / doctor [--reindex] / tools / skills / config / shortcut / bug-report
 Daemon diagnostics and configuration.
+.TP
+.B quit / stop
+Unload the model and stop the user daemon. Status polls will not start it again until
+.B start
+or a chat command.
+.TP
+.B start
+Clear a previous quit and start
+.B kde-ai-agent.service.
 .SH SEE ALSO
 kde-ai-agent(1)

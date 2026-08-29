@@ -10,4 +10,4 @@
 - AppStream `packaging/org.kde.kdeai.metainfo.xml`
 - Polkit: prefer raw `pkexec` of allowlisted binaries; optional `packaging/polkit/org.kde.kdeai.policy`
 
-CLI if the socket is missing: `systemctl --user start kde-ai-agent.service` then retry, else spawn `kde-ai-agent`.
+CLI if the socket is missing: `systemctl --user start kde-ai-agent.service` then retry, else spawn `kde-ai-agent`. `kde-ai status` does not start the daemon. Tray **Quit** (`kde-ai quit`) writes `$XDG_RUNTIME_DIR/kde-ai/stopped` so the plasmoid status poll cannot bring it back until **Start agent** or `kde-ai start` / a chat command.

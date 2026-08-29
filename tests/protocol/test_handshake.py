@@ -60,6 +60,20 @@ def test_handshake_and_busy(xdg):
     daemon._stop = True
 
 
+def test_daemon_shutdown(xdg):
+    daemon = _start(xdg)
+    rpc = RpcClient()
+    rpc.connect(start_daemon=False)
+    rpc.hello()
+    assert rpc.call("daemon.shutdown")["ok"] is True
+    rpc.close()
+    for _ in range(50):
+        if daemon._stop:
+            break
+        time.sleep(0.05)
+    assert daemon._stop is True
+
+
 def test_config_whitelist(xdg):
     _start(xdg)
     rpc = RpcClient()

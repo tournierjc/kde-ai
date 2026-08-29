@@ -27,6 +27,7 @@ Result: `{ok, daemon_version, status}`.
 | `hello` | above | `{ok, daemon_version, status}` |
 | `status.get` | — | status object |
 | `status.set_enabled` | `{enabled}` | status |
+| `daemon.shutdown` | — | `{ok}` unload the model and exit the daemon |
 | `chat.send` | `{session_id, message, issue_hint?}` | `{stream_id}` |
 | `chat.cancel` | `{stream_id}` | `{ok}` |
 | `session.create` | `{title?}` | `{session_id}` |
@@ -73,7 +74,7 @@ Result: `{ok, daemon_version, status}`.
 
 ## Status
 
-`state`: `ready | loading | answering | awaiting_confirm | awaiting_privilege | paused | idle_unloaded | disabled | busy`
+`state`: `ready | loading | answering | awaiting_confirm | awaiting_privilege | paused | idle_unloaded | disabled | busy | stopped`
 
 Also: `vram_mb`, `reason`, `active_session_id`, `stream_id`, `gpu_blocker_pid`, `config_error`.
 

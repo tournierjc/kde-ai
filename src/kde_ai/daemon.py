@@ -57,6 +57,14 @@ class Daemon:
         self._stop = False
         self.state = "idle_unloaded"
 
+    def _request_stop(self) -> None:
+        time.sleep(0.05)
+        try:
+            self.llm.unload()
+        except Exception:
+            pass
+        self._stop = True
+
     def broadcast(self, method: str, params: dict) -> None:
         msg = notify(method, params)
         for c in list(self.clients):
@@ -177,6 +185,9 @@ class Daemon:
             apply_patch(self.cfg, {"daemon.enabled": bool(params.get("enabled"))})
             self.broadcast("config.changed", {"patch_keys": ["daemon.enabled"]})
             return self.status_obj()
+        if method == "daemon.shutdown":
+            threading.Thread(target=self._request_stop, daemon=True).start()
+            return {"ok": True}
         if method == "chat.send":
             sid = params.get("session_id") or self.store.active_id
             if not sid:

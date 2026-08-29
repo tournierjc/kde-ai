@@ -31,6 +31,10 @@ def socket_path() -> Path:
     return runtime_dir() / "kde-ai.sock"
 
 
+def stopped_path() -> Path:
+    return runtime_dir() / "stopped"
+
+
 def pid_path() -> Path:
     return runtime_dir() / "daemon.pid"
 

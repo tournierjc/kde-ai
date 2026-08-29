@@ -14,6 +14,7 @@ PlasmoidItem {
     property string statusText: "idle"
     property bool paused: statusText === "paused"
     property bool awaiting: statusText === "awaiting_confirm"
+    property bool agentStopped: statusText === "stopped"
     readonly property bool onPanel: Plasmoid.formFactor === PlasmaCore.Types.Horizontal
         || Plasmoid.formFactor === PlasmaCore.Types.Vertical
 
@@ -24,12 +25,44 @@ PlasmoidItem {
     preferredRepresentation: onPanel ? compactRepresentation : fullRepresentation
 
     toolTipMainText: "KDE AI"
-    toolTipSubText: paused ? "Paused — GPU in use" : "Local KDE/CachyOS agent"
+    toolTipSubText: agentStopped ? "Stopped — right-click to start" : (paused ? "Paused — GPU in use" : "Local KDE/CachyOS agent")
     Plasmoid.icon: "org.kde.kdeai"
 
+    ExecRpc { id: trayRpc }
+
+    Timer {
+        interval: 2000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: trayRpc.rpc("status", function(r) {
+            if (r && r.state)
+                root.statusText = r.state
+        })
+    }
+
+    Plasmoid.contextualActions: [
+        PlasmaCore.Action {
+            text: "Start agent"
+            icon.name: "media-playback-start"
+            enabled: root.agentStopped
+            onTriggered: trayRpc.rpc("start", function(r) {
+                root.statusText = (r && r.state) ? r.state : "idle_unloaded"
+            })
+        },
+        PlasmaCore.Action {
+            text: "Quit"
+            icon.name: "application-exit"
+            enabled: !root.agentStopped
+            onTriggered: trayRpc.rpc("quit", function() {
+                root.statusText = "stopped"
+            })
+        }
+    ]
+
     compactRepresentation: PlasmaComponents.ToolButton {
-        text: paused ? "AI ‖" : (awaiting ? "AI ?" : "AI")
-        Accessible.name: paused ? "KDE AI paused" : "KDE AI agent"
+        text: root.agentStopped ? "AI ·" : (paused ? "AI ‖" : (awaiting ? "AI ?" : "AI"))
+        Accessible.name: root.agentStopped ? "KDE AI stopped" : (paused ? "KDE AI paused" : "KDE AI agent")
         icon.name: paused ? "media-playback-pause" : "org.kde.kdeai"
         icon.source: paused ? "" : Qt.resolvedUrl("../icons/org.kde.kdeai.svg")
         onClicked: root.expanded = !root.expanded
@@ -50,19 +83,6 @@ PlasmoidItem {
         Rectangle {
             anchors.fill: parent
             color: Kirigami.Theme.backgroundColor
-        }
-
-        ExecRpc { id: statusRpc }
-
-        Timer {
-            interval: 2000
-            running: true
-            repeat: true
-            triggeredOnStart: true
-            onTriggered: statusRpc.rpc("status", function(r) {
-                if (r && r.state)
-                    root.statusText = r.state
-            })
         }
 
         ColumnLayout {
@@ -88,6 +108,7 @@ PlasmoidItem {
                             "awaiting_privilege": "Waiting for privilege",
                             "paused": "Paused — GPU in use",
                             "disabled": "Disabled",
+                            "stopped": "Stopped",
                             "busy": "Busy"
                         }
                         return labels[root.statusText] || root.statusText
@@ -101,6 +122,12 @@ PlasmoidItem {
                 visible: root.paused
                 type: Kirigami.MessageType.Warning
                 text: "GPU compute in use — the agent is paused until the other job yields."
+            }
+            Kirigami.InlineMessage {
+                Layout.fillWidth: true
+                visible: root.agentStopped
+                type: Kirigami.MessageType.Information
+                text: "Agent is stopped. Right-click the tray icon and choose Start agent, or send a chat."
             }
 
             QQC2.TabBar {

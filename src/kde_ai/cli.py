@@ -52,7 +52,7 @@ def _run_sudo(argv: list[str]) -> dict:
         return {"ok": False, "cancelled": True, "stdout": "", "stderr": "sudo missing", "code": 127}
 
 
-def connect(client: str = "cli") -> RpcClient:
+def connect(client: str = "cli", start_daemon: bool = True) -> RpcClient:
     rpc = RpcClient()
 
     def on_notify(method: str, params: dict) -> None:
@@ -94,7 +94,7 @@ def connect(client: str = "cli") -> RpcClient:
                 print(exc.message, file=sys.stderr)
 
     rpc.on_notify = on_notify
-    rpc.connect()
+    rpc.connect(start_daemon=start_daemon)
     rpc.hello(client=client, auth="tty" if sys.stdin.isatty() else "none")
     return rpc
 
@@ -203,6 +203,33 @@ def cmd_repl(rpc: RpcClient, args) -> int:
     return 0
 
 
+def cmd_status() -> int:
+    try:
+        rpc = connect(start_daemon=False)
+    except OSError:
+        out({"state": "stopped"})
+        return 0
+    try:
+        out(rpc.call("status.get"))
+    finally:
+        rpc.close()
+    return 0
+
+
+def cmd_quit() -> int:
+    from kde_ai.lifecycle import stop_agent
+
+    out(stop_agent())
+    return 0
+
+
+def cmd_start() -> int:
+    from kde_ai.lifecycle import start_agent
+
+    out(start_agent())
+    return 0
+
+
 def main(argv: list[str] | None = None) -> None:
     global JSON_MODE
     parser = argparse.ArgumentParser(prog="kde-ai")
@@ -228,6 +255,8 @@ def main(argv: list[str] | None = None) -> None:
     pc.add_argument("-s", "--session")
     sub.add_parser("cancel-attempt")
     sub.add_parser("status")
+    sub.add_parser("quit", aliases=["stop"])
+    sub.add_parser("start")
     pdoc = sub.add_parser("doctor")
     pdoc.add_argument("--reindex", action="store_true")
     sub.add_parser("tools")
@@ -243,15 +272,18 @@ def main(argv: list[str] | None = None) -> None:
     pbug.add_argument("-s", "--session")
     args = parser.parse_args(argv)
     JSON_MODE = bool(args.json)
+    if args.cmd in ("quit", "stop"):
+        raise SystemExit(cmd_quit())
+    if args.cmd == "start":
+        raise SystemExit(cmd_start())
+    if args.cmd == "status":
+        raise SystemExit(cmd_status())
     rpc = connect()
     try:
         if args.cmd is None:
             raise SystemExit(cmd_repl(rpc, args))
         if args.cmd == "chat":
             raise SystemExit(cmd_chat(rpc, args))
-        if args.cmd == "status":
-            out(rpc.call("status.get"))
-            return
         if args.cmd == "doctor":
             payload = {}
             if args.reindex:

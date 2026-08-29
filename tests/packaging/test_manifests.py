@@ -99,6 +99,11 @@ def test_app_icon_is_shipped():
     assert 'icon.name: paused ? "media-playback-pause" : "org.kde.kdeai"' in qml
     assert 'icon.source: paused ? "" : Qt.resolvedUrl("../icons/org.kde.kdeai.svg")' in qml
     assert 'Plasmoid.icon: "org.kde.kdeai"' in qml
+    assert "contextualActions" in qml
+    assert 'text: "Quit"' in qml
+    assert 'text: "Start agent"' in qml
+    assert 'trayRpc.rpc("quit"' in qml
+    assert "PlasmaCore.Action" in qml
 
 
 def test_pkgbuild_requires_llama_cpp():
