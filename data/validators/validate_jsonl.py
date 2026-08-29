@@ -44,6 +44,11 @@ EVAL_MIX = {
     "rag": 25,
     "refuse": 25,
 }
+DPO_MIX = {
+    "call-vs-no-call": 200,
+    "propose-vs-not": 150,
+    "privilege-cancel-vs-proceed": 150,
+}
 
 
 def _approx_tokens(text: str) -> int:
@@ -141,8 +146,14 @@ def validate_full(out: Path) -> None:
         validate_record(rec, "dpo.jsonl", i, dpo=True)
     _mix(train, TRAIN_MIX, "train.jsonl")
     _mix(ev, EVAL_MIX, "eval.jsonl")
-    if len(dpo) != 200:
-        raise SystemExit(f"dpo.jsonl has {len(dpo)} want 200")
+    expected_dpo = sum(DPO_MIX.values())
+    if len(dpo) != expected_dpo:
+        raise SystemExit(f"dpo.jsonl has {len(dpo)} want {expected_dpo}")
+    kinds = Counter((r.get("meta") or {}).get("dpo_kind") for r in dpo)
+    for kind, n in DPO_MIX.items():
+        got = kinds.get(kind, 0)
+        if got != n:
+            raise SystemExit(f"dpo.jsonl: {kind} got {got} want {n}")
     sums_path = out / "SHA256SUMS"
     if not sums_path.exists():
         raise SystemExit("missing SHA256SUMS")

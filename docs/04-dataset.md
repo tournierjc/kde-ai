@@ -7,7 +7,7 @@ The MVP **includes the training data**, not only generator code.
 | Gold seed | `data/gold/*.jsonl` | ≥ 400 | yes |
 | Full corpus | `data/out/train.jsonl` | 30 000 | LFS / tree |
 | Holdout | `data/out/eval.jsonl` | 500 | LFS / tree |
-| DPO | `data/out/dpo.jsonl` | 200 | LFS / tree |
+| DPO | `data/out/dpo.jsonl` | 500 | LFS / tree |
 
 Build:
 
@@ -30,7 +30,7 @@ PYTHONPATH=src:. python -m data.generators.daily_scenarios   # curated bake-off 
 | No-tool / refuse | 1500 | `refuse` |
 
 Eval 500 uses the same proportions (100/100/75/100/75/25/25).
-DPO 200: 80 call-vs-no-call, 60 propose-vs-not, 60 privilege-cancel-vs-proceed.
+DPO 500: 200 call-vs-no-call, 150 propose-vs-not, 150 privilege-cancel-vs-proceed.
 
 Every record uses the shipped `system.txt` plus the skill ids in `meta.skills`.
 

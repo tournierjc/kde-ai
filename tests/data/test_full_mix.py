@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from data.validators.validate_jsonl import (
+    DPO_MIX,
     EVAL_MIX,
     TRAIN_MIX,
     load_jsonl,
@@ -35,4 +36,4 @@ def test_full_mix_if_present():
     c2 = Counter(r["meta"]["domain"] for r in ev)
     for k, n in EVAL_MIX.items():
         assert c2[k] == n
-    assert len(load_jsonl(out / "dpo.jsonl")) == 200
+    assert len(load_jsonl(out / "dpo.jsonl")) == sum(DPO_MIX.values())

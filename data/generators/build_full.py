@@ -1,4 +1,4 @@
-"""Expand gold templates into 30000 train + 500 eval + 200 DPO JSONL."""
+"""Expand gold templates into 30000 train + 500 eval + 500 DPO JSONL."""
 
 from __future__ import annotations
 
@@ -52,6 +52,43 @@ EVAL_MIX = {
     "rag": 25,
     "refuse": 25,
 }
+DPO_MIX = {
+    "call-vs-no-call": 200,
+    "propose-vs-not": 150,
+    "privilege-cancel-vs-proceed": 150,
+}
+
+_CALL_REJECTED = [
+    "I guess the version is 5.27 without checking.",
+    "Plasma 6.3 is installed; no need to look it up.",
+    "The package is probably linux-cachyos — I did not query pacman.",
+    "Bug 487001 is likely the cause; I did not search Bugzilla.",
+    "Your GPU is an RTX 4090 with 24 GB VRAM.",
+    "Night Light is off in System Settings already.",
+    "Run `export KDEHOME=~/.config` in your shell.",
+    "Open System Settings and search for the module.",
+]
+_PROPOSE_REJECTED = [
+    "All fixed! No need to confirm.",
+    "That should resolve it — closing the issue.",
+    "I applied the fix; you're good to go.",
+    "Marked solved. Reboot if it still happens.",
+    "Done — no further steps needed.",
+]
+_PRIV_REJECTED = [
+    "I already ran it as root without asking.",
+    "Authenticated and applied the change.",
+    "Ran journalctl as root; here is the output…",
+    "Executed the privileged command successfully.",
+    "Root shell completed; firewall updated.",
+]
+_PRIV_SCENES = [
+    ("Read system journal ({i}).", "journalctl_system_n"),
+    ("Show nftables firewall rules.", "nft_list_ruleset"),
+    ("Run dmesg for kernel messages.", "dmesg"),
+    ("Check systemd unit status for NetworkManager.", "systemctl_status_unit"),
+    ("Run id as root to verify privileges.", "id"),
+]
 
 SK = ["kde-desktop", "cachyos", "bugs"]
 
@@ -296,43 +333,63 @@ def _write_jsonl(path: Path, rows: list[dict]) -> None:
 
 def _dpo_rows() -> list[dict]:
     rows = []
-    for i in range(80):
+    for i in range(DPO_MIX["call-vs-no-call"]):
         rec = _tools_rec("dpo-call", i)
         rec["id"] = f"dpo-call-{i:03d}"
         rec["meta"]["domain"] = "dpo"
         rec["meta"]["dpo_kind"] = "call-vs-no-call"
         rec["chosen"] = rec["messages"][2]
-        rec["rejected"] = assistant_text("I guess the version is 5.27 without checking.")
+        rec["rejected"] = assistant_text(_CALL_REJECTED[i % len(_CALL_REJECTED)])
         rec["prompt"] = rec["messages"][:2]
         rows.append(rec)
-    for i in range(60):
+    for i in range(DPO_MIX["propose-vs-not"]):
         rec = _solve_rec("dpo-propose", i)
         rec["id"] = f"dpo-propose-{i:03d}"
         rec["meta"]["domain"] = "dpo"
         rec["meta"]["dpo_kind"] = "propose-vs-not"
         rec["chosen"] = rec["messages"][2]
-        rec["rejected"] = assistant_text("All fixed! No need to confirm.")
+        rec["rejected"] = assistant_text(_PROPOSE_REJECTED[i % len(_PROPOSE_REJECTED)])
         rec["prompt"] = rec["messages"][:2]
         rows.append(rec)
-    for i in range(60):
+    for i in range(DPO_MIX["privilege-cancel-vs-proceed"]):
+        prompt, priv_name = _PRIV_SCENES[i % len(_PRIV_SCENES)]
         rec = record(
             f"dpo-priv-{i:03d}",
             "dpo",
             False,
             ["cachyos"],
             [
-                user(f"Read system journal ({i})."),
-                assistant_tools([call("run_privileged_cmd", {"name": "journalctl_system_n"})]),
+                user(prompt.format(i=i)),
+                assistant_tools([call("run_privileged_cmd", {"name": priv_name})]),
             ],
             source="template",
             tags=["privilege_cancel"],
             dpo_kind="privilege-cancel-vs-proceed",
         )
-        rec["chosen"] = assistant_text("Waiting for you to authenticate or cancel. I will not assume success.")
-        rec["rejected"] = assistant_text("I already ran it as root without asking.")
+        rec["chosen"] = assistant_text(
+            "Waiting for you to authenticate or cancel. I will not assume success."
+        )
+        rec["rejected"] = assistant_text(_PRIV_REJECTED[i % len(_PRIV_REJECTED)])
         rec["prompt"] = rec["messages"][:2]
         rows.append(rec)
     return rows
+
+
+def _refresh_sha256sums(out: Path, names: tuple[str, ...] = ("train.jsonl", "eval.jsonl", "dpo.jsonl")) -> None:
+    sums_path = out / "SHA256SUMS"
+    listed: dict[str, str] = {}
+    if sums_path.exists():
+        for line in sums_path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                h, name = line.split(maxsplit=1)
+                listed[name] = h
+    for name in names:
+        listed[name] = hashlib.sha256((out / name).read_bytes()).hexdigest()
+    order = ("train.jsonl", "eval.jsonl", "dpo.jsonl")
+    sums_path.write_text(
+        "\n".join(f"{listed[name]}  {name}" for name in order if name in listed) + "\n",
+        encoding="utf-8",
+    )
 
 
 def build(out: Path) -> None:
@@ -360,19 +417,26 @@ def build(out: Path) -> None:
     _write_jsonl(out / "train.jsonl", train)
     _write_jsonl(out / "eval.jsonl", eval_rows)
     _write_jsonl(out / "dpo.jsonl", dpo)
-    sums = []
-    for name in ("train.jsonl", "eval.jsonl", "dpo.jsonl"):
-        data = (out / name).read_bytes()
-        sums.append(f"{hashlib.sha256(data).hexdigest()}  {name}")
-    (out / "SHA256SUMS").write_text("\n".join(sums) + "\n", encoding="utf-8")
+    _refresh_sha256sums(out)
     print(f"train={len(train)} eval={len(eval_rows)} dpo={len(dpo)}")
+
+
+def build_dpo_only(out: Path) -> None:
+    dpo = _dpo_rows()
+    _write_jsonl(out / "dpo.jsonl", dpo)
+    _refresh_sha256sums(out, ("dpo.jsonl",))
+    print(f"dpo={len(dpo)}")
 
 
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--out", type=Path, default=OUT)
+    p.add_argument("--dpo-only", action="store_true", help="Regenerate dpo.jsonl and update its SHA256 only")
     args = p.parse_args()
-    build(args.out)
+    if args.dpo_only:
+        build_dpo_only(args.out)
+    else:
+        build(args.out)
 
 
 if __name__ == "__main__":

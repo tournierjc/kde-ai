@@ -15,6 +15,6 @@ Manual acceptance list. Automated smoke: `pytest` and `scripts/e2e_smoke.sh`.
 - [ ] Skills page: toggle shipped, install/remove a user skill, max 3
 - [ ] Config page persists via `config.set` and matches KCM
 - [ ] Gold coverage tests green
-- [ ] `data/out/train.jsonl` = 30000, `eval.jsonl` = 500, `dpo.jsonl` = 200; SHA256SUMS
+- [ ] `data/out/train.jsonl` = 30000, `eval.jsonl` = 500, `dpo.jsonl` = 500; SHA256SUMS
 - [ ] SFT on `train.jsonl`; holdout metrics file stored with GGUF
 - [ ] PKGBUILD / Flatpak manifest install on CachyOS
